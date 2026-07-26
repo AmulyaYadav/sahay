@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4-alpine
+        env:
+          POSTGRES_USER: sahay
+          POSTGRES_PASSWORD: sahay_test
+          POSTGRES_DB: sahay_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U sahay"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build shared package
+        run: npm run build -w packages/shared
+      - name: Typecheck
+        run: npm run typecheck -w server && npm run typecheck -w apps/web
+      - name: Unit tests
+        run: npm run test -w server
+      - name: Integration tests
+        run: npm run test:integration -w server
+        env:
+          DATABASE_URL_TEST: postgres://sahay:sahay_test@localhost:5433/sahay_test
+          REDIS_URL: redis://localhost:6379/15
+      - name: Web production build
+        run: npm run build -w apps/web
+
+  mobile-typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npm run build -w packages/shared
+      - name: Install mobile deps
+        working-directory: apps/mobile
+        run: npm install --no-audit --no-fund
+      - name: Mobile typecheck
+        working-directory: apps/mobile
+        run: npx tsc --noEmit
+
+  docker-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f server/Dockerfile .
+      - name: Build web image
+        run: docker build -f apps/web/Dockerfile .

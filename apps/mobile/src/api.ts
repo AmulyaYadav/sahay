@@ -1,0 +1,102 @@
+/** REST client for the Sahay API (docs/api-surface.md). */
+
+const DEFAULT_BASE = 'http://localhost:4000';
+
+export function apiOrigin(): string {
+  return process.env.EXPO_PUBLIC_API_ORIGIN ?? DEFAULT_BASE;
+}
+
+export function apiBase(): string {
+  return `${apiOrigin()}/api/v1`;
+}
+
+export function wsUrl(token: string): string {
+  const origin = apiOrigin().replace(/^http/, 'ws');
+  return `${origin}/ws?token=${encodeURIComponent(token)}`;
+}
+
+/** Error thrown for any non-2xx response, carrying the zApiError envelope. */
+export class ApiRequestError extends Error {
+  constructor(
+    public readonly status: number,
+    public readonly code: string,
+    message: string,
+    public readonly details?: Record<string, unknown>,
+  ) {
+    super(message);
+    this.name = 'ApiRequestError';
+  }
+}
+
+/** Thrown when the device appears offline / the server is unreachable. */
+export class NetworkError extends Error {
+  constructor(cause?: unknown) {
+    super('network_error');
+    this.name = 'NetworkError';
+    this.cause = cause;
+  }
+}
+
+export function isOfflineError(err: unknown): boolean {
+  return err instanceof NetworkError;
+}
+
+interface ApiOptions {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: unknown;
+  token?: string | null;
+  query?: Record<string, string | number | boolean | undefined>;
+}
+
+export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
+  const { method = 'GET', body, token, query } = opts;
+  let url = `${apiBase()}${path}`;
+  if (query) {
+    const qs = Object.entries(query)
+      .filter(([, v]) => v !== undefined && v !== '')
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
+      .join('&');
+    if (qs) url += `?${qs}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (err) {
+    throw new NetworkError(err);
+  }
+
+  if (!res.ok) {
+    let code = 'unknown';
+    let message = `HTTP ${res.status}`;
+    let details: Record<string, unknown> | undefined;
+    try {
+      const payload = (await res.json()) as {
+        error?: { code?: string; message?: string; details?: Record<string, unknown> };
+      };
+      code = payload.error?.code ?? code;
+      message = payload.error?.message ?? message;
+      details = payload.error?.details;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiRequestError(res.status, code, message, details);
+  }
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
+/** Random idempotency key (8–64 chars per zIdempotencyKey). */
+export function idempotencyKey(): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let out = '';
+  for (let i = 0; i < 32; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}

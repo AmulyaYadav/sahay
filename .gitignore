@@ -1,0 +1,15 @@
+node_modules/
+dist/
+build/
+.expo/
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+coverage/
+playwright-report/
+test-results/
+apps/web/e2e/.state.json
+*.log
+.DS_Store
+exports/

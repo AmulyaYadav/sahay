@@ -1,0 +1,32 @@
+# Production reverse proxy + static hosting.
+# Set SITE_ADDRESS (e.g. sahay.example.org) in the environment; Caddy handles TLS.
+{$SITE_ADDRESS::80} {
+	encode gzip
+
+	# Security headers for the SPA.
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy no-referrer
+		Permissions-Policy "geolocation=(self), microphone=(), camera=()"
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; connect-src 'self' wss:; frame-ancestors 'none'"
+	}
+
+	handle /api/* {
+		reverse_proxy api:4000
+	}
+	handle /ws {
+		reverse_proxy api:4000
+	}
+	handle /healthz {
+		reverse_proxy api:4000
+	}
+	handle /readyz {
+		reverse_proxy api:4000
+	}
+	handle {
+		root * /srv/web
+		try_files {path} /index.html
+		file_server
+	}
+}

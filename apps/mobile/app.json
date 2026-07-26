@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "Sahay",
+    "slug": "sahay",
+    "version": "0.1.0",
+    "scheme": "sahay",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "platforms": ["ios", "android", "web"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "org.sahay.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Sahay uses your approximate location (about 100 m) only while you are requesting help or in Helping Now mode, to find the nearest match. It is deleted within 15 minutes."
+      }
+    },
+    "android": {
+      "package": "org.sahay.app",
+      "permissions": ["ACCESS_COARSE_LOCATION"]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sahay uses your approximate location (about 100 m) only while requesting help or helping, to find the nearest match. It is deleted within 15 minutes.",
+          "isAndroidBackgroundLocationEnabled": false
+        }
+      ],
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}

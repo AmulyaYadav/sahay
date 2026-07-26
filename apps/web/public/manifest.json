@@ -1,0 +1,17 @@
+{
+  "name": "Sahay (सहाय)",
+  "short_name": "Sahay",
+  "description": "Privacy-conscious mutual-aid matchmaking for events.",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#F7F6F3",
+  "theme_color": "#4A6FA5",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

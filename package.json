@@ -1,0 +1,29 @@
+{
+  "name": "sahay",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sahay — privacy-conscious, event-centric mutual-aid coordination platform",
+  "workspaces": [
+    "packages/*",
+    "server",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev:infra": "docker compose up -d postgres redis",
+    "dev:server": "npm run dev -w server",
+    "dev:worker": "npm run dev:worker -w server",
+    "dev:web": "npm run dev -w apps/web",
+    "build": "npm run build -w packages/shared && npm run build -w server && npm run build -w apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test -w server",
+    "test:integration": "npm run test:integration -w server",
+    "test:e2e": "npm run test:e2e -w apps/web",
+    "db:migrate": "npm run db:migrate -w server",
+    "db:seed": "npm run db:seed -w server",
+    "db:seed:demo": "npm run db:seed:demo -w server"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
