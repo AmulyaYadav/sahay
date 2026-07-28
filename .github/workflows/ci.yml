@@ -41,7 +41,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck -w server && npm run typecheck -w apps/web
       - name: Unit tests
-        run: npm run test -w server
+        run: npm run test -w server && npm run test -w packages/shared
       - name: Integration tests
         run: npm run test:integration -w server
         env:

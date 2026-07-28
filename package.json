@@ -16,7 +16,7 @@
     "build": "npm run build -w packages/shared && npm run build -w server && npm run build -w apps/web",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test -w server",
+    "test": "npm run test -w server && npm run test -w packages/shared",
     "test:integration": "npm run test:integration -w server",
     "test:e2e": "npm run test:e2e -w apps/web",
     "db:migrate": "npm run db:migrate -w server",
