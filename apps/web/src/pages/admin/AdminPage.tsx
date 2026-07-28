@@ -4,7 +4,7 @@
  */
 import { REPORT_STATUSES } from '@sahay/shared';
 import { useState } from 'react';
-import { NavLink, useParams } from 'react-router-dom';
+import { Link, NavLink, useParams } from 'react-router-dom';
 import { useAdminEvents, useAdminNotice, useAdminReports, useAdminUsers, useMe } from '../../api/hooks';
 import { useLocale } from '../../i18n/LocaleContext';
 import { formatDateTime } from '../../lib/format';
@@ -212,7 +212,7 @@ function UsersSection() {
 function EventsSection() {
   const { t, locale } = useLocale();
   const { toast } = useToast();
-  const [pendingOnly, setPendingOnly] = useState(true);
+  const [pendingOnly, setPendingOnly] = useState(false);
   const events = useAdminEvents(pendingOnly ? { pendingApproval: true } : {});
   const [target, setTarget] = useState<ModerateTarget | null>(null);
   const [noticeFor, setNoticeFor] = useState<string | null>(null);
@@ -222,6 +222,10 @@ function EventsSection() {
 
   return (
     <div className="stack">
+      <Link to="/admin/events/new" className="btn btn-primary">
+        {t('admin.createEvent')}
+      </Link>
+
       <div className="row">
         <span className="field-label" style={{ flex: 1 }}>
           {t('admin.pendingApproval')}
@@ -280,9 +284,9 @@ function EventsSection() {
                 </Button>
                 <Button
                   variant="destructive"
-                  onClick={() => setTarget({ action: 'event_disable', targetEventId: ev.id, label: t('admin.emergency') })}
+                  onClick={() => setTarget({ action: 'event_disable', targetEventId: ev.id, label: t('admin.deleteEvent') })}
                 >
-                  {t('admin.emergency')}
+                  {t('admin.deleteEvent')}
                 </Button>
               </div>
             </div>

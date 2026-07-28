@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { AdminPage } from './pages/admin/AdminPage';
 import { AuthPage } from './pages/Auth';
+import { CreateEventPage } from './pages/CreateEvent';
 import { EventPage } from './pages/EventPage';
 import { LandingPage } from './pages/Landing';
 import { NotFoundPage } from './pages/NotFound';
@@ -64,6 +65,14 @@ export function App() {
                     element={
                       <RequireModerator>
                         <AdminPage />
+                      </RequireModerator>
+                    }
+                  />
+                  <Route
+                    path="/admin/events/new"
+                    element={
+                      <RequireModerator>
+                        <CreateEventPage />
                       </RequireModerator>
                     }
                   />
