@@ -1,13 +1,13 @@
 /**
  * Demo seed: realistic, entirely FICTIONAL data for local demos and screenshots.
  * Idempotent: refuses to run twice (aborts when 'Demo Admin' already exists).
- * Everything is inserted directly (no API calls); phone numbers come from the
- * reserved-looking +9155xxxxxxxx fake range and are stored exactly like real
+ * Everything is inserted directly (no API calls); email addresses come from a
+ * reserved-looking @demo.sahay.local range and are stored exactly like real
  * ones (AES-GCM ciphertext + blind index) so the OTP login flow works against
- * them with the console SMS provider.
+ * them with the console email provider.
  *
  *   npm run db:seed:demo   (then: POST /auth/otp/start — the OTP prints to the
- *   server console; any listed demo number logs into that account.)
+ *   server console; any listed demo email logs into that account.)
  */
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -18,7 +18,7 @@ import { loadConfig } from '../config.js';
 import { closeDb, getDb, schema } from './index.js';
 import { runMigrations } from './migrate.js';
 import { seedCatalogue } from './seed.js';
-import { encryptPii, phoneBlindIndex, shortCode } from '../lib/crypto.js';
+import { emailBlindIndex, encryptPii, shortCode } from '../lib/crypto.js';
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -29,7 +29,7 @@ async function makeUser(
   db: Db,
   opts: {
     pseudonym: string;
-    phone: string;
+    email: string;
     role?: string;
     createdDaysAgo?: number;
     stats?: Partial<typeof schema.reliabilityStats.$inferInsert>;
@@ -41,9 +41,9 @@ async function makeUser(
       pseudonym: opts.pseudonym,
       avatarSeed: opts.pseudonym,
       role: opts.role ?? 'user',
-      phoneEnc: encryptPii(opts.phone),
-      phoneHmac: phoneBlindIndex(opts.phone),
-      phoneVerifiedAt: new Date(),
+      emailEnc: encryptPii(opts.email),
+      emailHmac: emailBlindIndex(opts.email),
+      emailVerifiedAt: new Date(),
       createdAt: new Date(Date.now() - (opts.createdDaysAgo ?? 1) * DAY),
     })
     .returning();
@@ -131,10 +131,10 @@ export async function seedDemo(): Promise<void> {
   /* --------------------------------------------------------------- users */
 
   const admin = await makeUser(db, {
-    pseudonym: 'Demo Admin', phone: '+915500000001', role: 'admin', createdDaysAgo: 90,
+    pseudonym: 'Demo Admin', email: 'demo-admin@demo.sahay.local', role: 'admin', createdDaysAgo: 90,
   });
   const moderator = await makeUser(db, {
-    pseudonym: 'Demo Lantern', phone: '+915500000002', role: 'moderator', createdDaysAgo: 60,
+    pseudonym: 'Demo Lantern', email: 'demo-lantern@demo.sahay.local', role: 'moderator', createdDaysAgo: 60,
   });
 
   const participants: (typeof schema.users.$inferSelect)[] = [];
@@ -147,7 +147,7 @@ export async function seedDemo(): Promise<void> {
     participants.push(
       await makeUser(db, {
         pseudonym,
-        phone: `+91550000${1000 + i}`,
+        email: `demo-user-${i}@demo.sahay.local`,
         createdDaysAgo: veteran ? 200 : [45, 30, 14, 7, 3, 1, 1, 0, 0, 0, 5][i - 1] ?? 1,
         stats: veteran
           ? { accepted: 27, completed: 25, requesterConfirmed: 24, offersReceived30d: 12, offersResponded30d: 11, label: 'highly_reliable_helper' }
@@ -472,11 +472,11 @@ events
   ${camp.title}     (unlisted, active)    code ${camp.code}
   ${winterDrive.title} (public, scheduled) code ${winterDrive.code}
 
-log in (SMS_PROVIDER=console prints the OTP to the server console):
-  +915500000001  Demo Admin      (admin)
-  +915500000002  Demo Lantern    (moderator)
-  participants (+915500001000 … +915500001011):
-${participants.map((p, i) => `    +91550000${1000 + i}  ${p.pseudonym}`).join('\n')}
+log in (console email provider prints the OTP to the server console):
+  demo-admin@demo.sahay.local  Demo Admin      (admin)
+  demo-lantern@demo.sahay.local  Demo Lantern    (moderator)
+  participants (demo-user-0 … demo-user-11):
+${participants.map((p, i) => `    demo-user-${i}@demo.sahay.local  ${p.pseudonym}`).join('\n')}
 
 the "${kitchen.title}" dashboard has k≥3 distinct users on water —
 GET /api/v1/events/${kitchen.id}/dashboard shows live numbers.
