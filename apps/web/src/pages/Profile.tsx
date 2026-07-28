@@ -28,7 +28,7 @@ export function ProfilePage() {
                 : ''}
             </span>
           </div>
-          {me.data?.phoneVerified ? <Badge tone="ok">{t('reliability.phoneVerified')}</Badge> : null}
+          {me.data?.emailVerified ? <Badge tone="ok">{t('reliability.emailVerified')}</Badge> : null}
         </div>
       </Card>
 

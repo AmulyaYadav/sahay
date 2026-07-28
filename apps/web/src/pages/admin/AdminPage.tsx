@@ -160,7 +160,7 @@ function UsersSection() {
               </div>
               <p className="text-xs text-soft" style={{ margin: 0 }}>
                 {formatDateTime(u.createdAt, locale)} · {t('admin.reportCount', { count: u.reportCount })}
-                {u.phoneVerified ? ` · ${t('reliability.phoneVerified')}` : ''}
+                {u.emailVerified ? ` · ${t('reliability.emailVerified')}` : ''}
               </p>
               {u.riskFlags.length > 0 ? (
                 <p className="text-xs" style={{ margin: 0 }}>

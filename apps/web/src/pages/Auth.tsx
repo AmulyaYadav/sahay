@@ -1,4 +1,4 @@
-/** Phone OTP flow: phone → 6-digit code → session. Explains why the phone is asked. */
+/** Email OTP flow: email → 6-digit code → session. Explains why the email is asked. */
 import { LIMITS } from '@sahay/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -17,8 +17,8 @@ export function AuthPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const [step, setStep] = useState<'phone' | 'code'>('phone');
-  const [phone, setPhone] = useState('+91');
+  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [retryAfter, setRetryAfter] = useState(0);
@@ -40,12 +40,12 @@ export function AuthPage() {
     return () => window.clearInterval(id);
   }, [retryAfter]);
 
-  const normalizedPhone = phone.replace(/[\s-]/g, '');
+  const normalizedEmail = email.trim().toLowerCase();
 
   const sendCode = () => {
     setError(null);
     start.mutate(
-      { phone: normalizedPhone, locale },
+      { email: normalizedEmail, locale },
       {
         onSuccess: (res) => {
           setStep('code');
@@ -63,7 +63,7 @@ export function AuthPage() {
   const submitCode = () => {
     setError(null);
     verify.mutate(
-      { phone: normalizedPhone, code, device: { platform: 'web', name: navigator.userAgent.slice(0, 60) } },
+      { email: normalizedEmail, code, device: { platform: 'web', name: navigator.userAgent.slice(0, 60) } },
       {
         onSuccess: (session) => {
           setToken(session.token);
@@ -92,7 +92,7 @@ export function AuthPage() {
       </div>
 
       <Card>
-        {step === 'phone' ? (
+        {step === 'email' ? (
           <form
             className="stack"
             onSubmit={(e) => {
@@ -101,13 +101,13 @@ export function AuthPage() {
             }}
           >
             <Input
-              label={t('auth.phoneLabel')}
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              hint={t('auth.phoneWhy')}
+              label={t('auth.emailLabel')}
+              type="email"
+              autoComplete="email"
+              inputMode="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              hint={t('auth.emailWhy')}
               error={error}
               required
             />
@@ -140,7 +140,7 @@ export function AuthPage() {
               {t('auth.verify')}
             </Button>
             <div className="row" style={{ justifyContent: 'space-between' }}>
-              <Button variant="ghost" onClick={() => setStep('phone')}>
+              <Button variant="ghost" onClick={() => setStep('email')}>
                 {t('common.back')}
               </Button>
               <Button variant="ghost" disabled={retryAfter > 0 || start.isPending} onClick={sendCode}>

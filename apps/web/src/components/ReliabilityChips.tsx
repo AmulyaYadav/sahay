@@ -5,7 +5,7 @@ import { formatMonth } from '../lib/format';
 import { Badge } from '../ui/components';
 import { Icon } from '../ui/icons';
 
-/** Honest peer-trust chips: label, completed assists, member-since, phone-verified (with meaning). */
+/** Honest peer-trust chips: label, completed assists, member-since, email-verified (with meaning). */
 export function ReliabilityChips({ peer }: { peer: PeerProfile }) {
   const { t, locale } = useLocale();
   const [showMeaning, setShowMeaning] = useState(false);
@@ -16,7 +16,7 @@ export function ReliabilityChips({ peer }: { peer: PeerProfile }) {
         <Badge tone="accent">{t(`reliability.${peer.reliabilityLabel}`)}</Badge>
         <Badge>{t('reliability.completedAssists', { count: peer.completedAssists })}</Badge>
         <Badge>{t('reliability.memberSince', { month: formatMonth(peer.memberSince, locale) })}</Badge>
-        {peer.phoneVerifiedLabel ? (
+        {peer.emailVerifiedLabel ? (
           <button
             type="button"
             className="chip"
@@ -24,7 +24,7 @@ export function ReliabilityChips({ peer }: { peer: PeerProfile }) {
             aria-expanded={showMeaning}
             onClick={() => setShowMeaning((v) => !v)}
           >
-            <Icon name="check" size={14} /> {t('reliability.phoneVerified')}
+            <Icon name="check" size={14} /> {t('reliability.emailVerified')}
           </button>
         ) : (
           <Badge>{t('reliability.notVerified')}</Badge>

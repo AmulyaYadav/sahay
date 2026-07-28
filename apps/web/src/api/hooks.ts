@@ -56,14 +56,14 @@ export function useMe(enabled = true): UseQueryResult<Me> {
 
 export function useOtpStart() {
   return useMutation({
-    mutationFn: (body: { phone: string; locale: 'en' | 'hi' }) =>
+    mutationFn: (body: { email: string; locale: 'en' | 'hi' }) =>
       api<{ ok: boolean; retryAfterSeconds: number }>('/auth/otp/start', { body }),
   });
 }
 
 export function useOtpVerify() {
   return useMutation({
-    mutationFn: (body: { phone: string; code: string; device: { platform: 'web'; name?: string } }) =>
+    mutationFn: (body: { email: string; code: string; device: { platform: 'web'; name?: string } }) =>
       api<AuthSession>('/auth/otp/verify', { body }),
   });
 }
