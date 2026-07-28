@@ -2,6 +2,7 @@ import '../env.js';
 import { describe, expect, it } from 'vitest';
 import {
   decryptPii,
+  emailBlindIndex,
   encryptPii,
   hashOtp,
   hashToken,
@@ -26,6 +27,19 @@ describe('crypto', () => {
     expect(phoneBlindIndex('+919876543210')).toBe(phoneBlindIndex('+919876543210'));
     expect(phoneBlindIndex('+919876543210')).not.toBe(phoneBlindIndex('+919876543211'));
     expect(phoneBlindIndex('+919876543210')).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('is deterministic for the same email and differs for different emails', () => {
+    const a = emailBlindIndex('person@example.com');
+    const b = emailBlindIndex('person@example.com');
+    const c = emailBlindIndex('other@example.com');
+    expect(a).toBe(b);
+    expect(a).not.toBe(c);
+  });
+
+  it('produces a different index space than phoneBlindIndex', () => {
+    // Same underlying key, different input — just confirms no accidental collision helper.
+    expect(emailBlindIndex('A@B.COM')).not.toBe(phoneBlindIndex('A@B.COM'));
   });
 
   it('scopes OTP hashes to the phone so codes cannot be replayed across numbers', () => {

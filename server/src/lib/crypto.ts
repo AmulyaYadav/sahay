@@ -1,5 +1,5 @@
 /**
- * PII crypto helpers. Phone numbers are the only direct identifier we hold:
+ * PII crypto helpers. Phone numbers and email addresses are the only direct identifiers we hold:
  *  - encrypted at rest with AES-256-GCM (random IV per value)
  *  - looked up via a keyed blind index (HMAC-SHA256), so plaintext never hits an index
  * Neither the plaintext nor these outputs may ever be logged.
@@ -34,8 +34,13 @@ export function decryptPii(payload: string): string {
 }
 
 export function phoneBlindIndex(phoneE164: string): string {
-  const key = Buffer.from(loadConfig().PHONE_HMAC_KEY, 'hex');
+  const key = Buffer.from(loadConfig().IDENTITY_HMAC_KEY, 'hex');
   return createHmac('sha256', key).update(phoneE164).digest('hex');
+}
+
+export function emailBlindIndex(email: string): string {
+  const key = Buffer.from(loadConfig().IDENTITY_HMAC_KEY, 'hex');
+  return createHmac('sha256', key).update(email.trim().toLowerCase()).digest('hex');
 }
 
 /** Session tokens are opaque 256-bit values; only their sha256 is stored. */
@@ -58,10 +63,10 @@ export function newOtpCode(length = 6): string {
   return code;
 }
 
-export function hashOtp(code: string, phoneHmac: string): string {
-  // Peppered with the HMAC key; scoped to the phone so codes can't be replayed across numbers.
-  const key = Buffer.from(loadConfig().PHONE_HMAC_KEY, 'hex');
-  return createHmac('sha256', key).update(`${phoneHmac}:${code}`).digest('hex');
+export function hashOtp(code: string, identityHmac: string): string {
+  // Peppered with the HMAC key; scoped to the identity so codes can't be replayed across accounts.
+  const key = Buffer.from(loadConfig().IDENTITY_HMAC_KEY, 'hex');
+  return createHmac('sha256', key).update(`${identityHmac}:${code}`).digest('hex');
 }
 
 export function safeEqualHex(a: string, b: string): boolean {
