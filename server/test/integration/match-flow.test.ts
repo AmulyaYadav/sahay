@@ -92,7 +92,7 @@ describe('happy path: request → offer → accept → chat → meet → confirm
     expect(match.myAlias).not.toBe(match.peer.alias);
     expect(match.myAlias).not.toBe(s.helper.user.pseudonym);
     expect(match.peer.alias).not.toBe(s.requester.user.pseudonym);
-    expect(match.peer.phoneVerifiedLabel).toBe(true);
+    expect(match.peer.emailVerifiedLabel).toBe(true);
     expect(match.peer.memberSince).toMatch(/^[A-Z][a-z]+ \d{4}$/); // "March 2026"
 
     // Requester sees the same match from their side.

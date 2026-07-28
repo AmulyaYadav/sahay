@@ -63,21 +63,21 @@ function captureOtp(): { code: () => string } {
   const spy = vi.spyOn(console, 'log');
   return {
     code: () => {
-      const lines = spy.mock.calls.map((c) => c.join(' ')).filter((l) => /code: \d{6}/.test(l));
-      const match = lines[lines.length - 1]?.match(/code: (\d{6})/);
+      const lines = spy.mock.calls.map((c) => c.join(' ')).filter((l) => /OTP for .*: \d{6}/.test(l));
+      const match = lines[lines.length - 1]?.match(/: (\d{6})$/);
       if (!match) throw new Error('no OTP logged');
       return match[1]!;
     },
   };
 }
 
-async function otpLogin(phone: string) {
+async function otpLogin(email: string) {
   const otp = captureOtp();
-  await app.inject({ method: 'POST', url: '/api/v1/auth/otp/start', payload: { phone, locale: 'en' } });
+  await app.inject({ method: 'POST', url: '/api/v1/auth/otp/start', payload: { email, locale: 'en' } });
   return app.inject({
     method: 'POST',
     url: '/api/v1/auth/otp/verify',
-    payload: { phone, code: otp.code(), device: { platform: 'web' } },
+    payload: { email, code: otp.code(), device: { platform: 'web' } },
   });
 }
 
@@ -359,9 +359,9 @@ describe('emergency shutdown', () => {
     const active2 = await makeEvent(creator.user.id);
     const scheduled = await makeEvent(creator.user.id, { status: 'scheduled', startsAt: new Date(Date.now() + 3600_000), endsAt: new Date(Date.now() + 7200_000) });
 
-    // An existing phone-verified account to prove existing login still works.
-    const existingPhone = '+915522220001';
-    const first = await otpLogin(existingPhone);
+    // An existing email-verified account to prove existing login still works.
+    const existingEmail = 'e2e-shutdown-existing@example.com';
+    const first = await otpLogin(existingEmail);
     expect(first.statusCode).toBe(200);
 
     const res = await app.inject({
@@ -386,9 +386,9 @@ describe('emergency shutdown', () => {
       .where(eq(schema.featureFlags.key, 'signup_open'));
     expect(flag!.enabled).toBe(false);
 
-    // New phone → signup refused; existing phone → still logs in.
-    expect((await otpLogin('+915522220999')).statusCode).toBe(403);
-    const again = await otpLogin(existingPhone);
+    // New email → signup refused; existing email → still logs in.
+    expect((await otpLogin('e2e-shutdown-new@example.com')).statusCode).toBe(403);
+    const again = await otpLogin(existingEmail);
     expect(again.statusCode).toBe(200);
     expect(again.json().isNewAccount).toBe(false);
 
@@ -404,8 +404,8 @@ describe('appeals', () => {
     const admin = await makeAuthedUser({ role: 'admin' });
     const moderator = await makeAuthedUser({ role: 'moderator' });
 
-    const phone = '+915522230001';
-    const login = await otpLogin(phone);
+    const email = 'e2e-appeals@example.com';
+    const login = await otpLogin(email);
     const target = login.json().user as { id: string };
 
     expect(
@@ -414,7 +414,7 @@ describe('appeals', () => {
 
     // Old session is dead, but OTP login still works while suspended…
     expect((await app.inject({ url: '/api/v1/me', headers: { authorization: `Bearer ${login.json().token}` } })).statusCode).toBe(401);
-    const relogin = await otpLogin(phone);
+    const relogin = await otpLogin(email);
     expect(relogin.statusCode).toBe(200);
     const suspendedHeaders = { authorization: `Bearer ${relogin.json().token}` };
     // …ordinary endpoints stay closed:
@@ -466,7 +466,7 @@ describe('appeals', () => {
 });
 
 describe('read surfaces', () => {
-  it('user search, audit keyset, and stats aggregates never expose phone data', async () => {
+  it('user search, audit keyset, and stats aggregates never expose email data', async () => {
     const moderator = await makeAuthedUser({ role: 'moderator' });
     const admin = await makeAuthedUser({ role: 'admin' });
     const target = await makeAuthedUser({ pseudonym: 'Amber Falcon', avatarSeed: 'Amber Falcon' });
@@ -479,7 +479,7 @@ describe('read surfaces', () => {
     const users = await app.inject({ url: '/api/v1/admin/users?q=amber', headers: moderator.headers });
     expect(users.json().items).toHaveLength(1);
     expect(users.json().items[0]).toMatchObject({ pseudonym: 'Amber Falcon', reportCount: 0, riskFlags: [] });
-    expect(JSON.stringify(users.json())).not.toMatch(/phone(?!Verified)/i);
+    expect(JSON.stringify(users.json())).not.toMatch(/email(?!Verified)/i);
 
     const page1 = await app.inject({ url: '/api/v1/admin/audit', headers: admin.headers });
     expect(page1.statusCode).toBe(200);

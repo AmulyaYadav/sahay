@@ -1,6 +1,6 @@
 /**
- * Privacy slice: export (own data only — no phone, no peer ids), the download
- * endpoint, rate limits, and account deletion end-to-end including phone reuse
+ * Privacy slice: export (own data only — no email, no peer ids), the download
+ * endpoint, rate limits, and account deletion end-to-end including email reuse
  * creating a FRESH account. The data-request worker runs inline.
  */
 import '../env.js';
@@ -55,21 +55,21 @@ function captureOtp(): { code: () => string } {
   const spy = vi.spyOn(console, 'log');
   return {
     code: () => {
-      const lines = spy.mock.calls.map((c) => c.join(' ')).filter((l) => /code: \d{6}/.test(l));
-      const match = lines[lines.length - 1]?.match(/code: (\d{6})/);
+      const lines = spy.mock.calls.map((c) => c.join(' ')).filter((l) => /OTP for .*: \d{6}/.test(l));
+      const match = lines[lines.length - 1]?.match(/: (\d{6})$/);
       if (!match) throw new Error('no OTP logged');
       return match[1]!;
     },
   };
 }
 
-async function signup(phone: string) {
+async function signup(email: string) {
   const otp = captureOtp();
-  await app.inject({ method: 'POST', url: '/api/v1/auth/otp/start', payload: { phone, locale: 'en' } });
+  await app.inject({ method: 'POST', url: '/api/v1/auth/otp/start', payload: { email, locale: 'en' } });
   const verify = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/otp/verify',
-    payload: { phone, code: otp.code(), device: { platform: 'web', name: 'test' } },
+    payload: { email, code: otp.code(), device: { platform: 'web', name: 'test' } },
   });
   expect(verify.statusCode).toBe(200);
   return verify.json() as { token: string; user: { id: string; pseudonym: string }; isNewAccount: boolean };
@@ -90,9 +90,9 @@ async function runDataRequestWorker(userId: string, kind: string) {
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 
 describe('data export', () => {
-  it('exports own data only: no phone anywhere, peers as aliases, no foreign user ids', async () => {
-    const phone = '+915511110001';
-    const me = await signup(phone);
+  it('exports own data only: no email anywhere, peers as aliases, no foreign user ids', async () => {
+    const email = 'e2e-export@example.com';
+    const me = await signup(email);
     const headers = authHeaders(me.token);
 
     // Build activity: an event, a request, an accepted match, a chat message,
@@ -141,7 +141,7 @@ describe('data export', () => {
     expect(download.headers['content-disposition']).toContain('attachment');
     const bundle = download.json();
 
-    expect(bundle.profile).toMatchObject({ pseudonym: me.user.pseudonym, phoneVerified: true });
+    expect(bundle.profile).toMatchObject({ pseudonym: me.user.pseudonym, emailVerified: true });
     expect(bundle.requests).toHaveLength(1);
     expect(bundle.matches).toHaveLength(1);
     expect(bundle.matches[0].role).toBe('requester');
@@ -151,9 +151,8 @@ describe('data export', () => {
     expect(bundle.consents).toEqual([expect.objectContaining({ kind: 'safety_ack', granted: true })]);
 
     const serialized = JSON.stringify(bundle);
-    // The phone number must not appear in ANY form.
-    expect(serialized).not.toContain(phone);
-    expect(serialized).not.toContain(phone.slice(1));
+    // The email address must not appear in ANY form.
+    expect(serialized).not.toContain(email);
     // Deep scan: no other user's uuid leaks into the bundle.
     const uuids = serialized.match(UUID_RE) ?? [];
     expect(uuids).not.toContain(helper.user.id);
@@ -190,9 +189,9 @@ describe('account deletion', () => {
     expect(ok.statusCode).toBe(200);
   });
 
-  it('kills sessions, cancels matches, releases reservations, anonymizes, and frees the phone', async () => {
-    const phone = '+915511110002';
-    const me = await signup(phone); // this account will be deleted (acts as HELPER)
+  it('kills sessions, cancels matches, releases reservations, anonymizes, and frees the email', async () => {
+    const email = 'e2e-delete@example.com';
+    const me = await signup(email); // this account will be deleted (acts as HELPER)
     const headers = authHeaders(me.token);
 
     const creator = await makeUser();
@@ -239,8 +238,8 @@ describe('account deletion', () => {
     // User row anonymized; device/location/notification data gone.
     const [user] = await getDb().select().from(schema.users).where(eq(schema.users.id, me.user.id));
     expect(user!.pseudonym).toBe('Deleted User');
-    expect(user!.phoneEnc).toBeNull();
-    expect(user!.phoneHmac).toBeNull();
+    expect(user!.emailEnc).toBeNull();
+    expect(user!.emailHmac).toBeNull();
     expect(user!.status).toBe('deleted');
     expect(user!.deletedAt).not.toBeNull();
     expect(await getDb().select().from(schema.sessions).where(eq(schema.sessions.userId, me.user.id))).toHaveLength(0);
@@ -251,8 +250,8 @@ describe('account deletion', () => {
     // The worker is idempotent — a retried job changes nothing.
     await runDataRequestWorker(me.user.id, 'delete');
 
-    // The same phone now creates a FRESH account.
-    const again = await signup(phone);
+    // The same email now creates a FRESH account.
+    const again = await signup(email);
     expect(again.isNewAccount).toBe(true);
     expect(again.user.id).not.toBe(me.user.id);
   });

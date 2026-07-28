@@ -10,7 +10,7 @@ import { loadConfig } from '../src/config.js';
 import { getDb, schema, type Db } from '../src/db/index.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { seedCatalogue } from '../src/db/seed.js';
-import { newSessionToken, phoneBlindIndex, shortCode } from '../src/lib/crypto.js';
+import { emailBlindIndex, newSessionToken, shortCode } from '../src/lib/crypto.js';
 import { getRedis } from '../src/lib/redis.js';
 
 let migrated = false;
@@ -37,8 +37,8 @@ export async function truncateAll(): Promise<void> {
   await getRedis().flushdb();
 }
 
-export function randomPhone(): string {
-  return `+9198${String(10000000 + Math.floor(Math.random() * 89999999))}`;
+export function randomEmail(): string {
+  return `test-${randomBytes(6).toString('hex')}@example.com`;
 }
 
 export async function makeUser(
@@ -50,8 +50,8 @@ export async function makeUser(
     .values({
       pseudonym: 'Blue Sparrow',
       avatarSeed: 'Blue Sparrow',
-      phoneHmac: overrides.phoneHmac ?? phoneBlindIndex(randomPhone()),
-      phoneVerifiedAt: new Date(),
+      emailHmac: overrides.emailHmac ?? emailBlindIndex(randomEmail()),
+      emailVerifiedAt: new Date(),
       ...overrides,
     })
     .returning();
