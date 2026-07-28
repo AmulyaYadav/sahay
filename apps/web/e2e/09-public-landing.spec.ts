@@ -45,7 +45,10 @@ test('anonymous visitor sees the event on the landing page with its area and wan
 
 test('signing in is not required to view any public page', async ({ page, request }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
+  // Exact match: the header nav's "Sign in" link, distinct from the hero's
+  // "Admin sign in" CTA — both lead to /auth, but this asserts the nav path
+  // specifically since that's the one present on every page via AppShell.
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
   // No redirect to /auth happens just from visiting the landing page.
   await expect(page).toHaveURL('/');
 

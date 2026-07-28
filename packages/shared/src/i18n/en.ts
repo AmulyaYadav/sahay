@@ -280,7 +280,7 @@ export const en = {
     limitsBody: 'Sahay is a matchmaker, not a supplier. There is no guarantee a helper will be found. Items are community-reported and never inspected by us — always check them yourself. Sahay is not an emergency service and never handles medicines, alcohol, weapons, or fuel.',
     privacyTitle: 'Privacy by design',
     privacyBody: 'Pseudonyms everywhere. Your phone number is stored encrypted and never shown to anyone. Locations are coarse (about 100 m) and expire within 15 minutes. No participant lists, no leaderboards, no public profiles.',
-    signInCta: 'Sign in',
+    signInCta: 'Admin sign in',
     installTitle: 'Works on any phone',
     installBody: 'Sahay runs in your browser — no install needed. Add it to your home screen for one-tap access; native apps are on the way.',
     volunteerTitle: 'Become a Sahay volunteer',
