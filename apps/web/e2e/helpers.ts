@@ -126,7 +126,8 @@ export async function loginViaApi(request: APIRequestContext, email: string): Pr
   return { token: session.token, user: session.user };
 }
 
-/** Full UI login: /auth → email → fixed OTP → lands on /home. */
+/** Full UI login: /auth → email → fixed OTP → lands on /admin (the only
+ * authenticated destination Auth.tsx's `dest` resolves to without a `next`). */
 export async function loginViaUi(page: Page, email: string): Promise<void> {
   await clearOtpRateLimits();
   await page.goto('/auth');
@@ -134,7 +135,7 @@ export async function loginViaUi(page: Page, email: string): Promise<void> {
   await page.getByRole('button', { name: 'Send code' }).click();
   await page.getByLabel('Enter the 6-digit code').fill(FIXED_OTP);
   await page.getByRole('button', { name: 'Verify' }).click();
-  await page.waitForURL('**/home');
+  await page.waitForURL('**/admin');
 }
 
 export interface SeedSessionOptions {
