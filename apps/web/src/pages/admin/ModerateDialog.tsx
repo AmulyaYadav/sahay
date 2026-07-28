@@ -14,6 +14,8 @@ export interface ModerateTarget {
   targetMatchId?: string;
   reportId?: string;
   withDuration?: boolean;
+  /** Rendered prominently above the reason input when present, e.g. for destructive actions. */
+  warning?: string;
 }
 
 export function ModerateDialog({ target, onClose }: { target: ModerateTarget | null; onClose: () => void }) {
@@ -53,6 +55,11 @@ export function ModerateDialog({ target, onClose }: { target: ModerateTarget | n
         <Banner tone="warn" icon="warning">
           {t('admin.reauthNote')}
         </Banner>
+        {target.warning ? (
+          <Banner tone="danger" icon="warning">
+            {target.warning}
+          </Banner>
+        ) : null}
         <Textarea
           label={t('admin.reason')}
           value={reason}

@@ -6,12 +6,12 @@ import { REPORT_STATUSES } from '@sahay/shared';
 import { useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
 import {
-  useAdminCategories,
   useAdminEvents,
   useAdminNotice,
   useAdminReports,
   useAdminSetWants,
   useAdminUsers,
+  useCatalogue,
   useMe,
 } from '../../api/hooks';
 import { useLocale } from '../../i18n/LocaleContext';
@@ -217,7 +217,7 @@ function UsersSection() {
   );
 }
 
-function EventsSection() {
+function EventsSection({ isAdmin }: { isAdmin: boolean }) {
   const { t, locale } = useLocale();
   const { toast } = useToast();
   const [pendingOnly, setPendingOnly] = useState(false);
@@ -291,15 +291,24 @@ function EventsSection() {
                 <Button variant="secondary" onClick={() => setNoticeFor(ev.id)}>
                   {t('admin.publishNotice')}
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setWantsFor({ id: ev.id, current: ev.adminWantSlugs ?? [] })}
-                >
-                  {t('admin.manageWants')}
-                </Button>
+                {isAdmin ? (
+                  <Button
+                    variant="secondary"
+                    onClick={() => setWantsFor({ id: ev.id, current: ev.adminWantSlugs ?? [] })}
+                  >
+                    {t('admin.manageWants')}
+                  </Button>
+                ) : null}
                 <Button
                   variant="destructive"
-                  onClick={() => setTarget({ action: 'event_disable', targetEventId: ev.id, label: t('admin.deleteEvent') })}
+                  onClick={() =>
+                    setTarget({
+                      action: 'event_disable',
+                      targetEventId: ev.id,
+                      label: t('admin.deleteEvent'),
+                      warning: t('admin.deleteEventConfirm'),
+                    })
+                  }
                 >
                   {t('admin.deleteEvent')}
                 </Button>
@@ -374,7 +383,7 @@ function WantsDialogInner({
 }) {
   const { t, locale } = useLocale();
   const { toast } = useToast();
-  const catalogue = useAdminCategories();
+  const catalogue = useCatalogue();
   const setWants = useAdminSetWants(target.id);
   const [selected, setSelected] = useState<string[]>(target.current);
 
@@ -386,20 +395,28 @@ function WantsDialogInner({
     <Dialog open onClose={onClose} title={title}>
       <div className="stack">
         <p className="text-sm text-soft">{t('admin.wantsHint')}</p>
-        <div className="row-wrap">
-          {(catalogue.data ?? []).map((c) => (
-            <button
-              key={c.slug}
-              type="button"
-              role="checkbox"
-              aria-checked={selected.includes(c.slug)}
-              className="chip"
-              onClick={() => toggle(c.slug)}
-            >
-              {c.name[locale] ?? c.name.en ?? c.slug}
-            </button>
-          ))}
-        </div>
+        {catalogue.isLoading ? (
+          <SkeletonCard lines={2} />
+        ) : catalogue.isError ? (
+          <Banner tone="danger" icon="warning">
+            {t('common.error')}
+          </Banner>
+        ) : (
+          <div className="row-wrap">
+            {(catalogue.data?.categories ?? []).map((c) => (
+              <button
+                key={c.slug}
+                type="button"
+                role="checkbox"
+                aria-checked={selected.includes(c.slug)}
+                className="chip"
+                onClick={() => toggle(c.slug)}
+              >
+                {c.name[locale] ?? c.name.en ?? c.slug}
+              </button>
+            ))}
+          </div>
+        )}
         <Button
           block
           loading={setWants.isPending}
@@ -450,7 +467,7 @@ export function AdminPage() {
         <div>
           {section === 'reports' ? <ReportsSection /> : null}
           {section === 'users' ? <UsersSection /> : null}
-          {section === 'events' ? <EventsSection /> : null}
+          {section === 'events' ? <EventsSection isAdmin={isAdmin} /> : null}
           {['categories', 'flags', 'appeals', 'audit', 'stats'].includes(section) ? (
             <AdminSystemSection section={section} isAdmin={isAdmin} />
           ) : null}
