@@ -10,6 +10,7 @@ import type { PublicWant } from '@sahay/shared';
 import { getDb } from '../../db/index.js';
 import { schema } from '../../db/index.js';
 import { errors } from '../../lib/errors.js';
+import { requireEvent } from '../admin/service.js';
 
 export async function computePublicWants(eventIds: string[]): Promise<Map<string, PublicWant[]>> {
   const result = new Map<string, PublicWant[]>();
@@ -18,13 +19,12 @@ export async function computePublicWants(eventIds: string[]): Promise<Map<string
 
   const adminRows = await db
     .select({
-      eventId: schema.eventCategories.eventId,
+      eventId: schema.eventAdminWants.eventId,
       slug: schema.categories.slug,
-      sortOrder: schema.categories.sortOrder,
     })
-    .from(schema.eventCategories)
-    .innerJoin(schema.categories, eq(schema.categories.id, schema.eventCategories.categoryId))
-    .where(and(inArray(schema.eventCategories.eventId, eventIds), eq(schema.eventCategories.adminWant, true)))
+    .from(schema.eventAdminWants)
+    .innerJoin(schema.categories, eq(schema.categories.id, schema.eventAdminWants.categoryId))
+    .where(inArray(schema.eventAdminWants.eventId, eventIds))
     .orderBy(asc(schema.categories.sortOrder));
 
   const reqQty = sql<string>`COALESCE(SUM(${schema.requests.qty} - ${schema.requests.qtyFulfilled}), 0)`;
@@ -65,6 +65,8 @@ export async function computePublicWants(eventIds: string[]): Promise<Map<string
 export async function setAdminWants(eventId: string, categorySlugs: string[]): Promise<void> {
   const db = getDb();
   await db.transaction(async (tx) => {
+    await requireEvent(tx, eventId);
+
     const cats = categorySlugs.length
       ? await tx
           .select({ id: schema.categories.id })
@@ -74,22 +76,14 @@ export async function setAdminWants(eventId: string, categorySlugs: string[]): P
     if (categorySlugs.length > 0 && cats.length !== new Set(categorySlugs).size) {
       throw errors.validation({ field: 'categorySlugs' });
     }
-    const wantedIds = new Set(cats.map((c) => c.id));
 
-    // Clear admin_want from anything no longer wanted.
-    await tx
-      .update(schema.eventCategories)
-      .set({ adminWant: false })
-      .where(eq(schema.eventCategories.eventId, eventId));
-
-    for (const categoryId of wantedIds) {
+    // Replace the admin-wants list wholesale — this table has no other
+    // columns to preserve (unlike event_categories), so delete+insert is safe.
+    await tx.delete(schema.eventAdminWants).where(eq(schema.eventAdminWants.eventId, eventId));
+    if (cats.length > 0) {
       await tx
-        .insert(schema.eventCategories)
-        .values({ eventId, categoryId, adminWant: true })
-        .onConflictDoUpdate({
-          target: [schema.eventCategories.eventId, schema.eventCategories.categoryId],
-          set: { adminWant: true },
-        });
+        .insert(schema.eventAdminWants)
+        .values(cats.map((c) => ({ eventId, categoryId: c.id })));
     }
   });
 }

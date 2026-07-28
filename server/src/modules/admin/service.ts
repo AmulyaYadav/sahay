@@ -111,7 +111,7 @@ async function requireUser(tx: Tx, userId: string | undefined) {
   return user;
 }
 
-async function requireEvent(tx: Tx, eventId: string | undefined) {
+export async function requireEvent(tx: Tx, eventId: string | undefined) {
   if (!eventId) throw errors.validation({ field: 'targetEventId' });
   const [event] = await tx.select().from(schema.events).where(eq(schema.events.id, eventId)).limit(1).for('update');
   if (!event) throw errors.notFound();
@@ -436,10 +436,10 @@ export async function listAdminEvents(filters: { status?: string; pendingApprova
   const eventIds = rows.map((r) => r.event.id);
   const wantRows = eventIds.length
     ? await db
-        .select({ eventId: schema.eventCategories.eventId, slug: schema.categories.slug })
-        .from(schema.eventCategories)
-        .innerJoin(schema.categories, eq(schema.categories.id, schema.eventCategories.categoryId))
-        .where(and(inArray(schema.eventCategories.eventId, eventIds), eq(schema.eventCategories.adminWant, true)))
+        .select({ eventId: schema.eventAdminWants.eventId, slug: schema.categories.slug })
+        .from(schema.eventAdminWants)
+        .innerJoin(schema.categories, eq(schema.categories.id, schema.eventAdminWants.categoryId))
+        .where(inArray(schema.eventAdminWants.eventId, eventIds))
     : [];
   const wantsByEvent = new Map<string, string[]>();
   for (const w of wantRows) {

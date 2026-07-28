@@ -30,13 +30,22 @@ describe('0002_email_auth migration', () => {
     expect(otpCols.rows.every((r) => r.is_nullable === 'YES')).toBe(true);
   });
 
-  it('adds admin_want to event_categories', async () => {
+});
+
+describe('0004_event_admin_wants migration', () => {
+  it('creates the event_admin_wants table and drops event_categories.admin_want', async () => {
     const db = getDb();
-    const cols = await db.execute(sql`
-      SELECT column_name, is_nullable, column_default FROM information_schema.columns
+    const table = await db.execute(sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'event_admin_wants'
+      ORDER BY column_name
+    `);
+    expect(table.rows.map((r) => r.column_name).sort()).toEqual(['category_id', 'event_id']);
+
+    const dropped = await db.execute(sql`
+      SELECT column_name FROM information_schema.columns
       WHERE table_name = 'event_categories' AND column_name = 'admin_want'
     `);
-    expect(cols.rows).toHaveLength(1);
-    expect(cols.rows[0]!.is_nullable).toBe('NO');
+    expect(dropped.rows).toHaveLength(0);
   });
 });

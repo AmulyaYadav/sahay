@@ -71,7 +71,7 @@ describe('POST /events', () => {
     expect(res.statusCode).toBe(403);
   });
 
-  it('event search and detail responses include a wants array', async () => {
+  it('event detail response includes an empty wants array before any are declared', async () => {
     const admin = await makeAuthedUser({ role: 'admin' });
     const created = await app.inject({
       method: 'POST',
@@ -92,6 +92,29 @@ describe('POST /events', () => {
     expect(created.statusCode).toBe(200);
     const detail = await app.inject({ url: `/api/v1/events/${created.json().event.code}` });
     expect(detail.json().wants).toEqual([]);
+  });
+
+  it('event search response includes a wants array, capped at 3', async () => {
+    const admin = await makeAuthedUser({ role: 'admin' });
+    const event = await makeEvent(admin.user.id, { visibility: 'public', publicApproved: true });
+    const slugs = ['water-bottle', 'blanket', 'sanitary-pads', 'diapers', 'bandages'];
+    const setRes = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/events/${event.id}/wants`,
+      headers: admin.headers,
+      payload: { categorySlugs: slugs },
+    });
+    expect(setRes.statusCode).toBe(200);
+
+    const search = await app.inject({ url: '/api/v1/events' });
+    expect(search.statusCode).toBe(200);
+    const row = search.json().items.find((it: { id: string }) => it.id === event.id);
+    expect(row).toBeDefined();
+    expect(row.wants.length).toBeLessThanOrEqual(3);
+    expect(row.wants.length).toBeGreaterThan(0);
+
+    const detail = await app.inject({ url: `/api/v1/events/${event.code}` });
+    expect(detail.json().wants.length).toBe(slugs.length); // detail is uncapped
   });
 
   it('creates an event, coarsens the center, and auto-joins the creator as event_admin', async () => {

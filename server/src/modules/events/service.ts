@@ -104,7 +104,16 @@ export async function getMembership(eventId: string, userId: string) {
 export async function buildEventDetail(event: EventRow, userId: string | null): Promise<EventDetail> {
   const db = getDb();
   const membership = userId ? await getMembership(event.id, userId) : null;
-  const wants = (await computePublicWants([event.id])).get(event.id) ?? [];
+  // Real (non-k-anonymized) demand signal is only computed for the public
+  // landing page's own events — small private events are exactly where a
+  // single-requester signal is most identifying, so unlisted/invite_only
+  // events never get real wants, matching the dashboard's public-access rule.
+  const openToAnyone =
+    event.visibility === 'public' &&
+    event.publicApproved &&
+    event.status !== 'draft' &&
+    event.status !== 'disabled';
+  const wants = openToAnyone ? (await computePublicWants([event.id])).get(event.id) ?? [] : [];
   const notices = await db
     .select()
     .from(schema.eventNotices)

@@ -522,7 +522,9 @@ describe('read surfaces', () => {
 
   it('PATCH /admin/events/:id/wants sets admin-declared wants', async () => {
     const admin = await makeAuthedUser({ role: 'admin' });
-    const event = await makeEvent(admin.user.id);
+    // Real wants are only surfaced for public+approved events (Finding 7) —
+    // use one here so the detail assertion below observes them.
+    const event = await makeEvent(admin.user.id, { visibility: 'public', publicApproved: true });
     const water = await categoryBySlug('water-bottle');
 
     const res = await app.inject({
