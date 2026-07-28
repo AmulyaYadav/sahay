@@ -537,6 +537,13 @@ describe('read surfaces', () => {
     expect(detail.json().wants).toEqual([
       expect.objectContaining({ categorySlug: water.slug, source: 'admin' }),
     ]);
+
+    // GET /admin/events must carry the same admin-declared want slugs, so the
+    // wants-management UI can prefill its dialog without an extra round-trip.
+    const list = await app.inject({ url: '/api/v1/admin/events', headers: admin.headers });
+    expect(list.statusCode).toBe(200);
+    const row = list.json().items.find((it: { id: string }) => it.id === event.id);
+    expect(row.adminWantSlugs).toEqual([water.slug]);
   });
 
   it('PATCH /admin/events/:id/wants is rejected for a moderator (admin-tier only)', async () => {

@@ -5,7 +5,15 @@
 import { REPORT_STATUSES } from '@sahay/shared';
 import { useState } from 'react';
 import { Link, NavLink, useParams } from 'react-router-dom';
-import { useAdminEvents, useAdminNotice, useAdminReports, useAdminUsers, useMe } from '../../api/hooks';
+import {
+  useAdminCategories,
+  useAdminEvents,
+  useAdminNotice,
+  useAdminReports,
+  useAdminSetWants,
+  useAdminUsers,
+  useMe,
+} from '../../api/hooks';
 import { useLocale } from '../../i18n/LocaleContext';
 import { formatDateTime } from '../../lib/format';
 import { Badge, Banner, Button, Card, EmptyState, Input, SkeletonCard, Toggle } from '../../ui/components';
@@ -219,6 +227,7 @@ function EventsSection() {
   const [noticeBody, setNoticeBody] = useState('');
   const [noticeUrgent, setNoticeUrgent] = useState(false);
   const notice = useAdminNotice();
+  const [wantsFor, setWantsFor] = useState<{ id: string; current: string[] } | null>(null);
 
   return (
     <div className="stack">
@@ -283,6 +292,12 @@ function EventsSection() {
                   {t('admin.publishNotice')}
                 </Button>
                 <Button
+                  variant="secondary"
+                  onClick={() => setWantsFor({ id: ev.id, current: ev.adminWantSlugs ?? [] })}
+                >
+                  {t('admin.manageWants')}
+                </Button>
+                <Button
                   variant="destructive"
                   onClick={() => setTarget({ action: 'event_disable', targetEventId: ev.id, label: t('admin.deleteEvent') })}
                 >
@@ -328,8 +343,80 @@ function EventsSection() {
         </div>
       </Dialog>
 
+      <WantsDialog target={wantsFor} onClose={() => setWantsFor(null)} />
       <ModerateDialog target={target} onClose={() => setTarget(null)} />
     </div>
+  );
+}
+
+function WantsDialog({
+  target,
+  onClose,
+}: {
+  target: { id: string; current: string[] } | null;
+  onClose: () => void;
+}) {
+  const { t } = useLocale();
+  if (!target) return null;
+  // Keyed by event id so state (selection) resets fresh every time the dialog
+  // is opened — including reopening after a cancel-without-save.
+  return <WantsDialogInner key={target.id} target={target} onClose={onClose} title={t('admin.manageWants')} />;
+}
+
+function WantsDialogInner({
+  target,
+  onClose,
+  title,
+}: {
+  target: { id: string; current: string[] };
+  onClose: () => void;
+  title: string;
+}) {
+  const { t, locale } = useLocale();
+  const { toast } = useToast();
+  const catalogue = useAdminCategories();
+  const setWants = useAdminSetWants(target.id);
+  const [selected, setSelected] = useState<string[]>(target.current);
+
+  const toggle = (slug: string) => {
+    setSelected((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  };
+
+  return (
+    <Dialog open onClose={onClose} title={title}>
+      <div className="stack">
+        <p className="text-sm text-soft">{t('admin.wantsHint')}</p>
+        <div className="row-wrap">
+          {(catalogue.data ?? []).map((c) => (
+            <button
+              key={c.slug}
+              type="button"
+              role="checkbox"
+              aria-checked={selected.includes(c.slug)}
+              className="chip"
+              onClick={() => toggle(c.slug)}
+            >
+              {c.name[locale] ?? c.name.en ?? c.slug}
+            </button>
+          ))}
+        </div>
+        <Button
+          block
+          loading={setWants.isPending}
+          onClick={() =>
+            setWants.mutate(selected, {
+              onSuccess: () => {
+                toast(t('sync.submitted'));
+                onClose();
+              },
+              onError: () => toast(t('common.error'), 'error'),
+            })
+          }
+        >
+          {t('common.ok')}
+        </Button>
+      </div>
+    </Dialog>
   );
 }
 

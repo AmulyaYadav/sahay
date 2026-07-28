@@ -212,6 +212,8 @@ export interface AdminEventRow extends EventSummary {
   matchingPaused?: boolean;
   /** Server field: false = a public listing still awaiting approval. */
   publicApproved?: boolean;
+  /** Category slugs currently declared as admin wants for this event. */
+  adminWantSlugs?: string[];
 }
 
 export function useAdminEvents(params: { status?: string; pendingApproval?: boolean }) {
@@ -228,6 +230,18 @@ export function useAdminNotice() {
   return useMutation({
     mutationFn: ({ eventId, body, urgent }: { eventId: string; body: string; urgent: boolean }) =>
       api<{ ok: boolean }>(`/admin/events/${eventId}/notice`, { body: { body, urgent } }),
+  });
+}
+
+export function useAdminSetWants(eventId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (categorySlugs: string[]) =>
+      api<{ ok: boolean }>(`/admin/events/${eventId}/wants`, { method: 'PATCH', body: { categorySlugs } }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['event', eventId] });
+      void qc.invalidateQueries({ queryKey: ['adminEvents'] });
+    },
   });
 }
 

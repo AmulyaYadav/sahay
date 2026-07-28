@@ -432,6 +432,22 @@ export async function listAdminEvents(filters: { status?: string; pendingApprova
     .where(conditions.length ? and(...conditions) : sql`true`)
     .orderBy(desc(schema.events.createdAt))
     .limit(200);
+
+  const eventIds = rows.map((r) => r.event.id);
+  const wantRows = eventIds.length
+    ? await db
+        .select({ eventId: schema.eventCategories.eventId, slug: schema.categories.slug })
+        .from(schema.eventCategories)
+        .innerJoin(schema.categories, eq(schema.categories.id, schema.eventCategories.categoryId))
+        .where(and(inArray(schema.eventCategories.eventId, eventIds), eq(schema.eventCategories.adminWant, true)))
+    : [];
+  const wantsByEvent = new Map<string, string[]>();
+  for (const w of wantRows) {
+    const list = wantsByEvent.get(w.eventId) ?? [];
+    list.push(w.slug);
+    wantsByEvent.set(w.eventId, list);
+  }
+
   return rows.map((r) => ({
     id: r.event.id,
     code: r.event.code,
@@ -445,6 +461,7 @@ export async function listAdminEvents(filters: { status?: string; pendingApprova
     endsAt: r.event.endsAt.toISOString(),
     createdBy: r.createdByPseudonym,
     createdAt: r.event.createdAt.toISOString(),
+    adminWantSlugs: wantsByEvent.get(r.event.id) ?? [],
   }));
 }
 
