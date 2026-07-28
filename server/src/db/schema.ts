@@ -158,6 +158,7 @@ export const eventCategories = pgTable(
     enabled: boolean('enabled').notNull().default(true),
     maxRequestQty: numeric('max_request_qty'),
     maxOfferQty: numeric('max_offer_qty'),
+    adminWant: boolean('admin_want').notNull().default(false),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.categoryId] })],
 );

@@ -29,4 +29,14 @@ describe('0002_email_auth migration', () => {
     expect(otpCols.rows).toHaveLength(2);
     expect(otpCols.rows.every((r) => r.is_nullable === 'YES')).toBe(true);
   });
+
+  it('adds admin_want to event_categories', async () => {
+    const db = getDb();
+    const cols = await db.execute(sql`
+      SELECT column_name, is_nullable, column_default FROM information_schema.columns
+      WHERE table_name = 'event_categories' AND column_name = 'admin_want'
+    `);
+    expect(cols.rows).toHaveLength(1);
+    expect(cols.rows[0]!.is_nullable).toBe('NO');
+  });
 });
