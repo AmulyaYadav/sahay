@@ -28,7 +28,7 @@ export function AuthPage() {
   const verify = useOtpVerify();
 
   const next = search.get('next');
-  const dest = next && next.startsWith('/') ? next : '/home';
+  const dest = next && next.startsWith('/') ? next : '/admin';
 
   useEffect(() => {
     if (getToken()) navigate(dest, { replace: true });

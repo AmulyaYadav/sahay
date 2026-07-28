@@ -45,7 +45,7 @@ test('anonymous visitor sees the event on the landing page with its area and wan
 
 test('signing in is not required to view any public page', async ({ page, request }) => {
   await page.goto('/');
-  await expect(page.getByRole('link', { name: 'Sign in with your phone' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
   // No redirect to /auth happens just from visiting the landing page.
   await expect(page).toHaveURL('/');
 

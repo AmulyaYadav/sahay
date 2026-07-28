@@ -281,7 +281,7 @@ export const en = {
     privacyTitle: 'Privacy by design',
     privacyBody: 'Pseudonyms everywhere. Your phone number is stored encrypted and never shown to anyone. Locations are coarse (about 100 m) and expire within 15 minutes. No participant lists, no leaderboards, no public profiles.',
     discoverCta: 'Discover events',
-    signInCta: 'Sign in with your phone',
+    signInCta: 'Sign in',
     installTitle: 'Works on any phone',
     installBody: 'Sahay runs in your browser — no install needed. Add it to your home screen for one-tap access; native apps are on the way.',
     volunteerTitle: 'Become a Sahay volunteer',
