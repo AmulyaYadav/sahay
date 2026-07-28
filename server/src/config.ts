@@ -47,6 +47,15 @@ export function loadConfig(): Config {
     ) {
       throw new Error('Refusing to start in production with example or reused crypto keys');
     }
+    if (parsed.data.EMAIL_PROVIDER === 'console') {
+      throw new Error('Refusing to start in production with EMAIL_PROVIDER=console');
+    }
+    if (
+      parsed.data.EMAIL_PROVIDER === 'resend' &&
+      (!parsed.data.RESEND_API_KEY || !parsed.data.RESEND_FROM)
+    ) {
+      throw new Error('Refusing to start in production with EMAIL_PROVIDER=resend but RESEND_API_KEY/RESEND_FROM unset');
+    }
   }
   cached = parsed.data;
   return cached;
