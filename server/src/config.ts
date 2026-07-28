@@ -7,13 +7,10 @@ const zConfig = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
   PII_ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/, 'must be 32 bytes hex'),
-  PHONE_HMAC_KEY: z.string().regex(/^[0-9a-f]{64}$/, 'must be 32 bytes hex'),
-  SMS_PROVIDER: z.enum(['console', 'twilio', 'msg91']).default('console'),
-  TWILIO_ACCOUNT_SID: z.string().optional(),
-  TWILIO_AUTH_TOKEN: z.string().optional(),
-  TWILIO_FROM: z.string().optional(),
-  MSG91_AUTH_KEY: z.string().optional(),
-  MSG91_SENDER_ID: z.string().optional(),
+  IDENTITY_HMAC_KEY: z.string().regex(/^[0-9a-f]{64}$/, 'must be 32 bytes hex'),
+  EMAIL_PROVIDER: z.enum(['console', 'resend']).default('console'),
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM: z.string().optional(),
   PUSH_PROVIDER: z.enum(['console', 'expo']).default('console'),
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
@@ -42,11 +39,11 @@ export function loadConfig(): Config {
       throw new Error('Refusing to start in production with TEST_FIXED_OTP set');
     }
     const exampleKeys = ['0'.repeat(64), '1'.repeat(64)];
-    const { PII_ENCRYPTION_KEY, PHONE_HMAC_KEY } = parsed.data;
+    const { PII_ENCRYPTION_KEY, IDENTITY_HMAC_KEY } = parsed.data;
     if (
       exampleKeys.includes(PII_ENCRYPTION_KEY) ||
-      exampleKeys.includes(PHONE_HMAC_KEY) ||
-      PII_ENCRYPTION_KEY === PHONE_HMAC_KEY
+      exampleKeys.includes(IDENTITY_HMAC_KEY) ||
+      PII_ENCRYPTION_KEY === IDENTITY_HMAC_KEY
     ) {
       throw new Error('Refusing to start in production with example or reused crypto keys');
     }

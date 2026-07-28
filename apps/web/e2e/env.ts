@@ -6,7 +6,7 @@
  * The stack is fully isolated from local development:
  *  - dedicated database  sahay_e2e  on the dev postgres container (:5432)
  *  - dedicated redis db  14
- *  - console SMS/push providers, deterministic OTP 424242
+ *  - console email/push providers, deterministic OTP 424242
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,8 +36,8 @@ export const SERVER_ENV: Record<string, string> = {
   REDIS_URL,
   // .env.example development keys — never valid in production.
   PII_ENCRYPTION_KEY: '0'.repeat(64),
-  PHONE_HMAC_KEY: '1'.repeat(64),
-  SMS_PROVIDER: 'console',
+  IDENTITY_HMAC_KEY: '1'.repeat(64),
+  EMAIL_PROVIDER: 'console',
   PUSH_PROVIDER: 'console',
   TEST_FIXED_OTP: FIXED_OTP,
   OFFER_RESPONSE_SECONDS: '45',
