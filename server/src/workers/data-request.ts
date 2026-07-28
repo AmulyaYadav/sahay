@@ -271,8 +271,8 @@ export async function performAccountDeletion(userId: string): Promise<void> {
   // 6. Blocks the user placed go; blocks AGAINST the user stay (they protect others).
   await db.delete(schema.blocks).where(eq(schema.blocks.blockerId, userId));
 
-  // 7. Anonymize the users row. The phone is fully detached so the number can
-  //    register a FRESH account later. deleted_at marks completion.
+  // 7. Anonymize the users row. The phone and email are fully detached so
+  //    either can register a FRESH account later. deleted_at marks completion.
   await db
     .update(schema.users)
     .set({
@@ -281,6 +281,9 @@ export async function performAccountDeletion(userId: string): Promise<void> {
       phoneEnc: null,
       phoneHmac: null,
       phoneVerifiedAt: null,
+      emailEnc: null,
+      emailHmac: null,
+      emailVerifiedAt: null,
       status: 'deleted',
       deletedAt: new Date(),
     })
