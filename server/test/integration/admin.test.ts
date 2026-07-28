@@ -519,6 +519,38 @@ describe('read surfaces', () => {
     expect(row!.retentionDays).toBe(3);
     expect((await auditRows('event_update'))).toHaveLength(1);
   });
+
+  it('PATCH /admin/events/:id/wants sets admin-declared wants', async () => {
+    const admin = await makeAuthedUser({ role: 'admin' });
+    const event = await makeEvent(admin.user.id);
+    const water = await categoryBySlug('water-bottle');
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/events/${event.id}/wants`,
+      headers: admin.headers,
+      payload: { categorySlugs: [water.slug] },
+    });
+    expect(res.statusCode).toBe(200);
+
+    const detail = await app.inject({ url: `/api/v1/events/${event.code}` });
+    expect(detail.json().wants).toEqual([
+      expect.objectContaining({ categorySlug: water.slug, source: 'admin' }),
+    ]);
+  });
+
+  it('PATCH /admin/events/:id/wants is rejected for a moderator (admin-tier only)', async () => {
+    const moderator = await makeAuthedUser({ role: 'moderator' });
+    const admin = await makeAuthedUser({ role: 'admin' });
+    const event = await makeEvent(admin.user.id);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/admin/events/${event.id}/wants`,
+      headers: moderator.headers,
+      payload: { categorySlugs: [] },
+    });
+    expect(res.statusCode).toBe(403);
+  });
 });
 
 const UUIDish = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;

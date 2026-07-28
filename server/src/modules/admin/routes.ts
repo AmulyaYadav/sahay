@@ -6,12 +6,13 @@
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminModerate, zUuid } from '@sahay/shared';
+import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminEventWants, zAdminModerate, zUuid } from '@sahay/shared';
 import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '../../db/index.js';
 import { errors } from '../../lib/errors.js';
 import { resolveAuth } from '../../plugins/auth.js';
 import { mapCategory } from '../catalogue/service.js';
+import { setAdminWants } from '../events/wants.js';
 import {
   adminPatchCategory,
   adminPatchEvent,
@@ -113,6 +114,12 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     const patch = zEventPatch.parse(req.body);
     const event = await adminPatchEvent(req.auth!.userId, zUuid.parse(req.params.id), patch);
     return { ok: true, id: event.id, status: event.status };
+  });
+
+  app.patch<{ Params: { id: string } }>('/admin/events/:id/wants', admin, async (req) => {
+    const body = zAdminEventWants.parse(req.body);
+    await setAdminWants(zUuid.parse(req.params.id), body.categorySlugs);
+    return { ok: true };
   });
 
   app.get('/admin/categories', admin, async () => {
