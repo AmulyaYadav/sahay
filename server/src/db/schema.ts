@@ -35,6 +35,9 @@ export const users = pgTable('users', {
   phoneEnc: text('phone_enc'),
   phoneHmac: text('phone_hmac').unique(),
   phoneVerifiedAt: ts('phone_verified_at'),
+  emailEnc: text('email_enc'),
+  emailHmac: text('email_hmac').unique(),
+  emailVerifiedAt: ts('email_verified_at'),
   canRequest: boolean('can_request').notNull().default(true),
   canHelp: boolean('can_help').notNull().default(true),
   suspendedUntil: ts('suspended_until'),
@@ -46,7 +49,8 @@ export const users = pgTable('users', {
 
 export const otpCodes = pgTable('otp_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
-  phoneHmac: text('phone_hmac').notNull(),
+  phoneHmac: text('phone_hmac'),
+  emailHmac: text('email_hmac'),
   codeHash: text('code_hash').notNull(),
   attempts: integer('attempts').notNull().default(0),
   expiresAt: ts('expires_at').notNull(),
