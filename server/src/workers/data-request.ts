@@ -101,7 +101,7 @@ export async function buildExportBundle(userId: string): Promise<Record<string, 
       pseudonym: user.pseudonym,
       locale: user.locale,
       createdAt: user.createdAt.toISOString(),
-      phoneVerified: user.phoneVerifiedAt != null, // never the number itself
+      emailVerified: user.emailVerifiedAt != null, // never the address itself
     },
     sessions: sessions.map((s) => ({
       platform: s.platform,

@@ -142,7 +142,7 @@ export function toMatchView(bundle: MatchBundle, viewerUserId: string): MatchVie
       reliabilityLabel: reliabilityLabel(counters),
       completedAssists: counters.completed,
       memberSince: memberSinceLabel(peerUser.createdAt),
-      phoneVerifiedLabel: peerUser.phoneVerifiedAt != null,
+      emailVerifiedLabel: peerUser.emailVerifiedAt != null,
     },
     myAlias: isRequester ? match.requesterAlias : match.helperAlias,
     conversationId: bundle.conversationId,

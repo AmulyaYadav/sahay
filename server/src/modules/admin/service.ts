@@ -410,7 +410,7 @@ export async function listUsers(q: string | undefined): Promise<AdminUserView[]>
     role: r.user.role as AdminUserView['role'],
     status: r.user.status as AdminUserView['status'],
     createdAt: r.user.createdAt.toISOString(),
-    phoneVerified: r.user.phoneVerifiedAt != null, // never the number
+    emailVerified: r.user.emailVerifiedAt != null, // never the address
     reportCount: Number(r.reportCount),
     riskFlags: r.user.riskFlags ?? [],
   }));
