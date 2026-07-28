@@ -22,7 +22,7 @@ import {
   type Session,
 } from './helpers';
 
-const REQUESTER_PHONE = '+915520000024';
+const REQUESTER_EMAIL = 'e2e-requester-04@example.com';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -42,7 +42,7 @@ test.beforeAll(async ({ browser, request }) => {
   // Nobody is helping for the duration of this spec.
   await db(`UPDATE availability SET is_on = false, updated_at = now() WHERE event_id = $1`, [eventId]);
 
-  r4 = await loginViaApi(request, REQUESTER_PHONE);
+  r4 = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, r4.token, eventId);
   ctx = await contextAt(browser, 0);
   await seedBrowserSession(ctx, r4.token, {

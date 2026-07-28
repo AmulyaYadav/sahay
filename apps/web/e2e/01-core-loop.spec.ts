@@ -16,8 +16,8 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { contextAt, db, joinEventViaUi, loginViaUi, readState, requestWaterViaUi } from './helpers';
 
-const HELPER_PHONE = '+915520000001';
-const REQUESTER_PHONE = '+915520000002';
+const HELPER_EMAIL = 'e2e-helper-01@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-01@example.com';
 
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(240_000);
@@ -43,7 +43,7 @@ test('helper and requester complete a full water-bottle exchange', async () => {
   const { eventId, eventCode } = readState();
 
   /* ---------------------------------------------------- Helper A sets up */
-  await loginViaUi(pageA, HELPER_PHONE);
+  await loginViaUi(pageA, HELPER_EMAIL);
   await joinEventViaUi(pageA, eventCode);
 
   // Quick-add 4 sealed 1-litre water bottles on the supplies tab.
@@ -69,7 +69,7 @@ test('helper and requester complete a full water-bottle exchange', async () => {
   await expect(pageA.getByText('Sharing approximate location')).toBeVisible();
 
   /* ------------------------------------------------- Requester B requests */
-  await loginViaUi(pageB, REQUESTER_PHONE);
+  await loginViaUi(pageB, REQUESTER_EMAIL);
   await joinEventViaUi(pageB, eventCode);
   await requestWaterViaUi(pageB, eventId, 1);
   await expect(pageB.getByText('Looking for a nearby helper')).toBeVisible();

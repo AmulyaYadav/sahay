@@ -25,9 +25,9 @@ import {
   type Session,
 } from './helpers';
 
-const H3_PHONE = '+915520000021';
-const H4_PHONE = '+915520000022';
-const REQUESTER_PHONE = '+915520000023';
+const H3_EMAIL = 'e2e-helper3-03@example.com';
+const H4_EMAIL = 'e2e-helper4-03@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-03@example.com';
 
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(180_000);
@@ -45,8 +45,8 @@ test.beforeAll(async ({ browser, request }) => {
   // Helpers from earlier specs must not intercept this spec's offers.
   await db(`UPDATE availability SET is_on = false, updated_at = now() WHERE event_id = $1`, [eventId]);
   water = await categoryBySlug(request, 'water-bottle');
-  h3 = await seedHelper(request, H3_PHONE, eventId, water, 2, 0.001);
-  r3 = await loginViaApi(request, REQUESTER_PHONE);
+  h3 = await seedHelper(request, H3_EMAIL, eventId, water, 2, 0.001);
+  r3 = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, r3.token, eventId);
 
   const event = { id: eventId, code: eventCode, title: 'Sahay E2E Community Event' };
@@ -101,7 +101,7 @@ test('partial fulfilment, continue search, second helper completes it', async ({
   });
 
   // Second helper appears (seeded only now, so it never competed for pass 1).
-  const h4 = await seedHelper(request, H4_PHONE, eventId, water, 3, 0.002);
+  const h4 = await seedHelper(request, H4_EMAIL, eventId, water, 3, 0.002);
 
   // Continue searching for the rest.
   await pageR.getByRole('button', { name: 'Search for the rest' }).click();

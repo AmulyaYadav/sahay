@@ -19,8 +19,8 @@ import {
   type Session,
 } from './helpers';
 
-const HELPER_PHONE = '+915520000032';
-const REQUESTER_PHONE = '+915520000033';
+const HELPER_EMAIL = 'e2e-helper-08@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-08@example.com';
 
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(150_000);
@@ -35,8 +35,8 @@ test.beforeAll(async ({ browser, request }) => {
   // Deterministic pairing: only H8 is available.
   await db(`UPDATE availability SET is_on = false, updated_at = now() WHERE event_id = $1`, [eventId]);
   const water = await categoryBySlug(request, 'water-bottle');
-  const h8 = await seedHelper(request, HELPER_PHONE, eventId, water, 3, 0.001);
-  r8 = await loginViaApi(request, REQUESTER_PHONE);
+  const h8 = await seedHelper(request, HELPER_EMAIL, eventId, water, 3, 0.001);
+  r8 = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, r8.token, eventId);
 
   const req = await createRequest(request, r8.token, eventId, water, 1);

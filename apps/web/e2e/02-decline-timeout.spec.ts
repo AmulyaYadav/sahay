@@ -27,9 +27,9 @@ import {
   type Session,
 } from './helpers';
 
-const H1_PHONE = '+915520000011';
-const H2_PHONE = '+915520000012';
-const REQUESTER_PHONE = '+915520000013';
+const H1_EMAIL = 'e2e-helper1-02@example.com';
+const H2_EMAIL = 'e2e-helper2-02@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-02@example.com';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -47,9 +47,9 @@ test.beforeAll(async ({ browser, request }) => {
   // Helpers from earlier specs must not intercept this spec's offers.
   await db(`UPDATE availability SET is_on = false, updated_at = now() WHERE event_id = $1`, [eventId]);
   water = await categoryBySlug(request, 'water-bottle');
-  h1 = await seedHelper(request, H1_PHONE, eventId, water, 5, 0.001);
-  h2 = await seedHelper(request, H2_PHONE, eventId, water, 5, 0.003);
-  requester = await loginViaApi(request, REQUESTER_PHONE);
+  h1 = await seedHelper(request, H1_EMAIL, eventId, water, 5, 0.001);
+  h2 = await seedHelper(request, H2_EMAIL, eventId, water, 5, 0.003);
+  requester = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, requester.token, eventId);
 
   const event = { id: eventId, code: eventCode, title: 'Sahay E2E Community Event' };

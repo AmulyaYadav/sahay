@@ -7,12 +7,12 @@ import { expect, test } from '@playwright/test';
 import { EVENT_CENTER } from './env';
 import { apiRaw, loginViaApi, writeState } from './helpers';
 
-const ORGANIZER_PHONE = '+915510000001';
+const ORGANIZER_EMAIL = 'e2e-organizer@example.com';
 
 test.describe.configure({ mode: 'serial' });
 
 test('organizer creates the shared unlisted event', async ({ request }) => {
-  const organizer = await loginViaApi(request, ORGANIZER_PHONE);
+  const organizer = await loginViaApi(request, ORGANIZER_EMAIL);
   expect(organizer.token).toBeTruthy();
 
   const now = Date.now();
@@ -36,5 +36,5 @@ test('organizer creates the shared unlisted event', async ({ request }) => {
   expect(event.status).toBe('active');
   expect(event.code).toMatch(/\w/);
 
-  writeState({ eventId: event.id, eventCode: event.code, organizerPhone: ORGANIZER_PHONE });
+  writeState({ eventId: event.id, eventCode: event.code, organizerPhone: ORGANIZER_EMAIL });
 });

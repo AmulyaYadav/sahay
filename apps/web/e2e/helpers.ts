@@ -28,7 +28,7 @@ export async function db<T extends Record<string, unknown> = Record<string, unkn
 }
 
 /**
- * OTP starts are rate-limited per phone (3/10 min) AND per IP (10/h) — far too
+ * OTP starts are rate-limited per email (3/10 min) AND per IP (10/h) — far too
  * tight for a test suite that logs in dozens of times from 127.0.0.1. Clearing
  * the fixed-window keys before each login keeps the limiter code in play while
  * making logins deterministic.
@@ -109,20 +109,20 @@ export interface Session {
 }
 
 /** OTP login via the API (fast path for fixture users). Creates the account on first use. */
-export async function loginViaApi(request: APIRequestContext, phone: string): Promise<Session> {
+export async function loginViaApi(request: APIRequestContext, email: string): Promise<Session> {
   await clearOtpRateLimits();
-  await apiRaw(request, '/auth/otp/start', { body: { phone, locale: 'en' } });
+  await apiRaw(request, '/auth/otp/start', { body: { email, locale: 'en' } });
   const session = await apiRaw<{ token: string; user: Session['user'] }>(request, '/auth/otp/verify', {
-    body: { phone, code: FIXED_OTP, device: { platform: 'web', name: 'e2e' } },
+    body: { email, code: FIXED_OTP, device: { platform: 'web', name: 'e2e' } },
   });
   return { token: session.token, user: session.user };
 }
 
-/** Full UI login: /auth → phone → fixed OTP → lands on /home. */
-export async function loginViaUi(page: Page, phone: string): Promise<void> {
+/** Full UI login: /auth → email → fixed OTP → lands on /home. */
+export async function loginViaUi(page: Page, email: string): Promise<void> {
   await clearOtpRateLimits();
   await page.goto('/auth');
-  await page.getByLabel('Phone number').fill(phone);
+  await page.getByLabel('Email address').fill(email);
   await page.getByRole('button', { name: 'Send code' }).click();
   await page.getByLabel('Enter the 6-digit code').fill(FIXED_OTP);
   await page.getByRole('button', { name: 'Verify' }).click();
@@ -234,13 +234,13 @@ export async function pingLocation(
  */
 export async function seedHelper(
   request: APIRequestContext,
-  phone: string,
+  email: string,
   eventId: string,
   category: CategoryRef,
   qty: number,
   latOffset = 0.001,
 ): Promise<Session> {
-  const session = await loginViaApi(request, phone);
+  const session = await loginViaApi(request, email);
   await joinEvent(request, session.token, eventId);
   await addInventory(request, session.token, eventId, category, qty);
   await setAvailability(request, session.token, eventId, true);

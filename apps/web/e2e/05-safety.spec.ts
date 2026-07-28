@@ -24,8 +24,8 @@ import {
   type Session,
 } from './helpers';
 
-const HELPER_PHONE = '+915520000025';
-const REQUESTER_PHONE = '+915520000026';
+const HELPER_EMAIL = 'e2e-helper-05@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-05@example.com';
 
 test.describe.configure({ mode: 'serial' });
 test.setTimeout(150_000);
@@ -43,8 +43,8 @@ test.beforeAll(async ({ browser, request }) => {
   // Only H5 may be available for this spec.
   await db(`UPDATE availability SET is_on = false, updated_at = now() WHERE event_id = $1`, [eventId]);
   water = await categoryBySlug(request, 'water-bottle');
-  h5 = await seedHelper(request, HELPER_PHONE, eventId, water, 5, 0.001);
-  r5 = await loginViaApi(request, REQUESTER_PHONE);
+  h5 = await seedHelper(request, HELPER_EMAIL, eventId, water, 5, 0.001);
+  r5 = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, r5.token, eventId);
 
   ctx = await contextAt(browser, 0);

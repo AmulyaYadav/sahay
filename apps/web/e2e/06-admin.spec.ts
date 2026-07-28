@@ -18,8 +18,8 @@ import {
   type Session,
 } from './helpers';
 
-const ADMIN_PHONE = '+915510000002';
-const REQUESTER_PHONE = '+915520000024'; // reuses the (member) requester from 04
+const ADMIN_EMAIL = 'e2e-admin-06@example.com';
+const REQUESTER_EMAIL = 'e2e-requester-04@example.com'; // reuses the (member) requester from 04
 const PUBLIC_EVENT_TITLE = 'Sahay E2E Public Water Fair';
 
 test.describe.configure({ mode: 'serial' });
@@ -40,12 +40,12 @@ test.beforeAll(async ({ browser, request }) => {
   const { eventId, organizerPhone } = readState();
 
   // Promote the admin account via SQL, then sign in through the UI.
-  const adminSession = await loginViaApi(request, ADMIN_PHONE);
+  const adminSession = await loginViaApi(request, ADMIN_EMAIL);
   await db(`UPDATE users SET role = 'admin' WHERE id = $1`, [adminSession.user.id]);
 
   adminCtx = await contextAt(browser, 0);
   adminPage = await adminCtx.newPage();
-  await loginViaUi(adminPage, ADMIN_PHONE);
+  await loginViaUi(adminPage, ADMIN_EMAIL);
 
   // A pending public event, created by the organizer via the API.
   const organizer = await loginViaApi(request, organizerPhone);
@@ -66,7 +66,7 @@ test.beforeAll(async ({ browser, request }) => {
     },
   });
 
-  requester = await loginViaApi(request, REQUESTER_PHONE);
+  requester = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, requester.token, eventId).catch(() => undefined); // already a member is fine
 });
 
