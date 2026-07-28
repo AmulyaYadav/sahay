@@ -38,7 +38,7 @@ describe('crypto', () => {
   });
 
   it('produces a different index space than phoneBlindIndex', () => {
-    // Same underlying key, different input — just confirms no accidental collision helper.
+    // Uppercase input is required: emailBlindIndex lowercases before hashing, so this only produces a different digest than phoneBlindIndex because normalization actually changes the string. Do not simplify to a lowercase input — that would make phoneBlindIndex and emailBlindIndex hash the identical string and this assertion would pass vacuously.
     expect(emailBlindIndex('A@B.COM')).not.toBe(phoneBlindIndex('A@B.COM'));
   });
 
