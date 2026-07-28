@@ -428,6 +428,7 @@ export const hi: StringCatalog = {
     wantsTitle: 'इस कार्यक्रम को क्या चाहिए',
     wantsEmpty: 'अभी तक कोई विशेष ज़रूरत सूचीबद्ध नहीं की गई है।',
     wantAdminBadge: 'पुष्टि की गई ज़रूरत',
+    wantQtyNeeded: '{{category}} — {{qty}} चाहिए',
   },
   createEvent: {
     title: 'कार्यक्रम बनाएँ',

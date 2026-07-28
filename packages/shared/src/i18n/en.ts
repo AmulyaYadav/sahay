@@ -426,6 +426,7 @@ export const en = {
     wantsTitle: 'What this event needs',
     wantsEmpty: 'No specific wants have been listed yet.',
     wantAdminBadge: 'Confirmed need',
+    wantQtyNeeded: '{{qty}} {{category}} needed',
   },
   createEvent: {
     title: 'Create an event',

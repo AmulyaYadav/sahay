@@ -19,10 +19,15 @@ export function PublicWants({ wants }: { wants: PublicWant[] }) {
       {wants.map((w) => {
         const cat = bySlug.get(w.categorySlug);
         if (!cat) return null;
+        const catName = cat.name[locale] ?? cat.name.en ?? cat.slug;
+        const hasQty = w.source === 'user' && typeof w.requestedQty === 'number' && w.requestedQty > 0;
+        const label = hasQty
+          ? t('eventPage.wantQtyNeeded', { qty: Math.round(w.requestedQty as number), category: catName })
+          : catName;
         return (
           <span key={w.categorySlug} className="chip" style={{ alignItems: 'center', gap: 'var(--sp-1)' }}>
             <CategoryChip group={cat.group} icon={cat.icon} size="sm" />
-            <span>{cat.name[locale]}</span>
+            <span>{label}</span>
             {w.source === 'admin' ? (
               <Badge tone="ok">
                 <Icon name="check" size={12} label={t('eventPage.wantAdminBadge')} />
