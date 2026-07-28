@@ -59,11 +59,11 @@ export type ApiError = z.infer<typeof zApiError>;
 /* -------------------------------------------------------------------- auth */
 
 export const zOtpStart = z.object({
-  phone: zPhone,
+  email: z.string().email(),
   locale: zLocale.default('en'),
 });
 export const zOtpVerify = z.object({
-  phone: zPhone,
+  email: z.string().email(),
   code: z.string().length(LIMITS.otpLength).regex(/^\d+$/),
   device: z.object({
     platform: z.enum(['ios', 'android', 'web']),
@@ -87,7 +87,7 @@ export const zMe = z.object({
   locale: zLocale,
   role: z.enum(USER_ROLES),
   status: z.enum(USER_STATUSES),
-  phoneVerified: z.boolean(),
+  emailVerified: z.boolean(),
   createdAt: zIsoDate,
 });
 export type Me = z.infer<typeof zMe>;
@@ -99,7 +99,7 @@ export const zPeerProfile = z.object({
   reliabilityLabel: z.enum(RELIABILITY_LABELS),
   completedAssists: z.number().int(),
   memberSince: z.string(), // "March 2026" — month granularity only
-  phoneVerifiedLabel: z.boolean(), // "Phone verified" — states exactly what was verified
+  emailVerifiedLabel: z.boolean(), // "Email verified" — states exactly what was verified
 });
 export type PeerProfile = z.infer<typeof zPeerProfile>;
 
@@ -481,7 +481,7 @@ export const zAdminUserView = z.object({
   role: z.enum(USER_ROLES),
   status: z.enum(USER_STATUSES),
   createdAt: zIsoDate,
-  phoneVerified: z.boolean(), // NOT the phone number — admins never see it
+  emailVerified: z.boolean(), // NOT the email address — admins never see it
   reportCount: z.number().int(),
   riskFlags: z.array(z.string()),
 });
