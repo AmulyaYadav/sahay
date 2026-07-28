@@ -257,8 +257,8 @@ export default function MatchScreen() {
                   <Badge label={t(`reliability.${m.peer.reliabilityLabel}`)} tone="accent" />
                   <Badge label={t('reliability.completedAssists', { count: m.peer.completedAssists })} />
                   <Badge label={t('reliability.memberSince', { month: m.peer.memberSince })} />
-                  {m.peer.phoneVerifiedLabel ? (
-                    <Badge label={t('reliability.phoneVerified')} tone="success" />
+                  {m.peer.emailVerifiedLabel ? (
+                    <Badge label={t('reliability.emailVerified')} tone="success" />
                   ) : (
                     <Badge label={t('reliability.notVerified')} tone="warn" />
                   )}

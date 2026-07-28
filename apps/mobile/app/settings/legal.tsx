@@ -16,7 +16,7 @@ export default function LegalScreen() {
     >
       <Card>
         <BodyBold>{t('settings.privacy')}</BodyBold>
-        <Body>{t('auth.phoneWhy')}</Body>
+        <Body>{t('auth.emailWhy')}</Body>
         <Body>{t('request.locationWhy')}</Body>
         <Body>{t('onboarding.intro2')}</Body>
         <Body>{t('chat.expiresNote')}</Body>

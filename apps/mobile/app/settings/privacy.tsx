@@ -21,10 +21,10 @@ export default function PrivacyScreen() {
         <Body>{t('settings.locationExplain')}</Body>
       </Card>
 
-      {/* Phone */}
+      {/* Email */}
       <Card>
-        <BodyBold>{t('auth.phoneLabel')}</BodyBold>
-        <Body>{t('auth.phoneWhy')}</Body>
+        <BodyBold>{t('auth.emailLabel')}</BodyBold>
+        <Body>{t('auth.emailWhy')}</Body>
       </Card>
 
       {/* Pseudonymity */}

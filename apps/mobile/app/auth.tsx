@@ -10,7 +10,7 @@ import { registerForPush } from '../src/push';
 import { spacing, useTheme } from '../src/theme';
 import { Body, Button, Card, Field, Gap, Muted, Title } from '../src/components/ui';
 
-type Step = 'phone' | 'code' | 'push';
+type Step = 'email' | 'code' | 'push';
 
 export default function AuthScreen() {
   const t = useT();
@@ -20,8 +20,8 @@ export default function AuthScreen() {
   const { locale } = useLocale();
   const { signIn, token } = useAuth();
 
-  const [step, setStep] = useState<Step>('phone');
-  const [phone, setPhone] = useState('+91');
+  const [step, setStep] = useState<Step>('email');
+  const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +34,7 @@ export default function AuthScreen() {
     return () => clearTimeout(timer);
   }, [resendIn]);
 
-  const normalizedPhone = phone.replace(/[\s-]/g, '');
+  const normalizedEmail = email.trim().toLowerCase();
 
   const startOtp = async () => {
     setBusy(true);
@@ -42,7 +42,7 @@ export default function AuthScreen() {
     try {
       const res = await api<{ ok: boolean; retryAfterSeconds: number }>('/auth/otp/start', {
         method: 'POST',
-        body: { phone: normalizedPhone, locale },
+        body: { email: normalizedEmail, locale },
       });
       setResendIn(res.retryAfterSeconds ?? 30);
       setStep('code');
@@ -60,7 +60,7 @@ export default function AuthScreen() {
       const session = await api<AuthSession>('/auth/otp/verify', {
         method: 'POST',
         body: {
-          phone: normalizedPhone,
+          email: normalizedEmail,
           code,
           device: { platform: Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web' },
         },
@@ -104,23 +104,24 @@ export default function AuthScreen() {
       >
         <Title>{t('common.appName')}</Title>
 
-        {step === 'phone' ? (
+        {step === 'email' ? (
           <View style={{ gap: spacing.lg }}>
-            <Body color={th.colors.muted}>{t('auth.phoneWhy')}</Body>
+            <Body color={th.colors.muted}>{t('auth.emailWhy')}</Body>
             <Field
-              label={t('auth.phoneLabel')}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              textContentType="telephoneNumber"
+              label={t('auth.emailLabel')}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
+              autoCapitalize="none"
             />
             {error ? <Body color={th.colors.danger}>{error}</Body> : null}
             <Button
               title={t('auth.sendCode')}
               onPress={() => void startOtp()}
               loading={busy}
-              disabled={!/^\+[1-9]\d{6,14}$/.test(normalizedPhone)}
+              disabled={!/^\S+@\S+\.\S+$/.test(normalizedEmail)}
             />
           </View>
         ) : null}
@@ -148,7 +149,7 @@ export default function AuthScreen() {
               disabled={resendIn > 0}
               onPress={() => void startOtp()}
             />
-            <Button title={t('common.back')} variant="ghost" onPress={() => setStep('phone')} />
+            <Button title={t('common.back')} variant="ghost" onPress={() => setStep('email')} />
           </View>
         ) : null}
 

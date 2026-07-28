@@ -47,8 +47,8 @@ export default function ProfileScreen() {
           <View style={{ flex: 1, gap: spacing.xs }}>
             <Heading>{me?.pseudonym ?? '…'}</Heading>
             <Row gap={spacing.xs} style={{ flexWrap: 'wrap' }}>
-              {me?.phoneVerified ? (
-                <Badge label={t('reliability.phoneVerified')} tone="success" />
+              {me?.emailVerified ? (
+                <Badge label={t('reliability.emailVerified')} tone="success" />
               ) : null}
               {me ? (
                 <Badge
