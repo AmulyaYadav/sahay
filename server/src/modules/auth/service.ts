@@ -1,24 +1,24 @@
 /**
- * OTP authentication. Phone numbers exist here only in transit: they are turned
- * into a blind index (HMAC) for lookup and AES-GCM ciphertext for storage.
- * Neither the phone nor the OTP code is ever logged.
+ * OTP authentication. Email addresses exist here only in transit: they are
+ * turned into a blind index (HMAC) for lookup and AES-GCM ciphertext for
+ * storage. Neither the email nor the OTP code is ever logged.
  */
 import { randomInt } from 'node:crypto';
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
-import { LIMITS, pseudonymFromIndexes, t, type AuthSession, type Locale, type Me } from '@sahay/shared';
+import { LIMITS, pseudonymFromIndexes, type AuthSession, type Locale, type Me } from '@sahay/shared';
 import { loadConfig } from '../../config.js';
 import { getDb, schema, type Db, type Tx } from '../../db/index.js';
 import {
+  emailBlindIndex,
   encryptPii,
   hashOtp,
   newOtpCode,
   newSessionToken,
-  phoneBlindIndex,
   safeEqualHex,
 } from '../../lib/crypto.js';
 import { errors } from '../../lib/errors.js';
 import { rateLimit } from '../../lib/redis.js';
-import { getSmsProvider } from '../../lib/sms.js';
+import { getOtpProvider } from '../../lib/email.js';
 
 const OTP_RETRY_AFTER_SECONDS = 60;
 
@@ -34,25 +34,25 @@ export function toMe(user: typeof schema.users.$inferSelect): Me {
     locale: user.locale === 'hi' ? 'hi' : 'en',
     role: user.role as Me['role'],
     status: user.status as Me['status'],
-    phoneVerified: user.phoneVerifiedAt != null,
+    emailVerified: user.emailVerifiedAt != null,
     createdAt: user.createdAt.toISOString(),
   };
 }
 
 /**
- * Always resolves to the same "sent" response regardless of whether the number
+ * Always resolves to the same "sent" response regardless of whether the email
  * has an account or the rate limit tripped — no enumeration, no oracle.
  */
 export async function startOtp(
-  phone: string,
+  email: string,
   locale: Locale,
   ip: string,
 ): Promise<{ ok: true; retryAfterSeconds: number }> {
-  const phoneHmac = phoneBlindIndex(phone);
+  const emailHmac = emailBlindIndex(email);
   // Fail CLOSED: any Redis error counts as "denied".
-  const phoneOk = await rateLimit('otp:phone', phoneHmac, 3, 600).catch(() => false);
+  const emailOk = await rateLimit('otp:email', emailHmac, 3, 600).catch(() => false);
   const ipOk = await rateLimit('otp:ip', ip, 10, 3600).catch(() => false);
-  if (!phoneOk || !ipOk) return { ok: true, retryAfterSeconds: OTP_RETRY_AFTER_SECONDS };
+  if (!emailOk || !ipOk) return { ok: true, retryAfterSeconds: OTP_RETRY_AFTER_SECONDS };
 
   const db = getDb();
   // TEST_FIXED_OTP (non-production only, see config.ts) pins the code for e2e/load
@@ -62,18 +62,16 @@ export async function startOtp(
     await tx
       .update(schema.otpCodes)
       .set({ consumedAt: new Date() })
-      .where(and(eq(schema.otpCodes.phoneHmac, phoneHmac), isNull(schema.otpCodes.consumedAt)));
+      .where(and(eq(schema.otpCodes.emailHmac, emailHmac), isNull(schema.otpCodes.consumedAt)));
     await tx.insert(schema.otpCodes).values({
-      phoneHmac,
-      codeHash: hashOtp(code, phoneHmac),
+      emailHmac,
+      codeHash: hashOtp(code, emailHmac),
       expiresAt: new Date(Date.now() + LIMITS.otpTtlMinutes * 60_000),
     });
   });
 
-  // "Sahay code: 123456" — app name is the only localized part; no OTP i18n keys exist.
-  const message = `${t(locale, 'common.appName')} code: ${code}`;
   try {
-    await getSmsProvider().send(phone, message, locale);
+    await getOtpProvider().send(email, code, locale);
   } catch {
     // Swallow provider failures: the response must not reveal delivery state.
   }
@@ -90,19 +88,19 @@ async function isSignupOpen(db: Db | Tx): Promise<boolean> {
 }
 
 export async function verifyOtp(
-  phone: string,
+  email: string,
   code: string,
   device: { platform: 'ios' | 'android' | 'web'; name?: string },
 ): Promise<AuthSession> {
   const db = getDb();
-  const phoneHmac = phoneBlindIndex(phone);
+  const emailHmac = emailBlindIndex(email);
 
   const [otp] = await db
     .select()
     .from(schema.otpCodes)
     .where(
       and(
-        eq(schema.otpCodes.phoneHmac, phoneHmac),
+        eq(schema.otpCodes.emailHmac, emailHmac),
         isNull(schema.otpCodes.consumedAt),
         gt(schema.otpCodes.expiresAt, sql`now()`),
       ),
@@ -118,7 +116,7 @@ export async function verifyOtp(
     .returning({ attempts: schema.otpCodes.attempts });
   const attempts = bumped?.attempts ?? otp.attempts + 1;
 
-  if (!safeEqualHex(hashOtp(code, phoneHmac), otp.codeHash)) {
+  if (!safeEqualHex(hashOtp(code, emailHmac), otp.codeHash)) {
     if (attempts >= LIMITS.otpMaxAttempts) {
       await db
         .update(schema.otpCodes)
@@ -139,17 +137,17 @@ export async function verifyOtp(
     const [existing] = await tx
       .select()
       .from(schema.users)
-      .where(eq(schema.users.phoneHmac, phoneHmac))
+      .where(eq(schema.users.emailHmac, emailHmac))
       .limit(1);
 
     if (existing && existing.status !== 'deleted' && !existing.deletedAt) {
       return { user: existing, isNewAccount: false };
     }
     if (existing) {
-      // Deleted account: detach the phone so a fresh account can claim it.
+      // Deleted account: detach the email so a fresh account can claim it.
       await tx
         .update(schema.users)
-        .set({ phoneHmac: null, phoneEnc: null })
+        .set({ emailHmac: null, emailEnc: null })
         .where(eq(schema.users.id, existing.id));
     }
 
@@ -161,9 +159,9 @@ export async function verifyOtp(
       .values({
         pseudonym,
         avatarSeed: pseudonym,
-        phoneEnc: encryptPii(phone),
-        phoneHmac,
-        phoneVerifiedAt: new Date(),
+        emailEnc: encryptPii(email),
+        emailHmac,
+        emailVerifiedAt: new Date(),
       })
       .returning();
     if (!created) throw new Error('user insert returned no row');

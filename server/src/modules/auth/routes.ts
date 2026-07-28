@@ -7,12 +7,12 @@ import { listSessions, revokeSession, startOtp, verifyOtp } from './service.js';
 export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/otp/start', async (req) => {
     const body = zOtpStart.parse(req.body);
-    return startOtp(body.phone, body.locale, req.ip);
+    return startOtp(body.email, body.locale, req.ip);
   });
 
   app.post('/auth/otp/verify', async (req) => {
     const body = zOtpVerify.parse(req.body);
-    return verifyOtp(body.phone, body.code, body.device);
+    return verifyOtp(body.email, body.code, body.device);
   });
 
   app.post('/auth/logout', { preHandler: [app.authenticate] }, async (req) => {
