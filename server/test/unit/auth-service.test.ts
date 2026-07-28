@@ -17,15 +17,6 @@ beforeEach(async () => {
   vi.restoreAllMocks();
 });
 
-function captureOtp(): string {
-  const spy = vi.spyOn(console, 'log');
-  const calls = spy.mock.calls.map((c) => c.join(' '));
-  const line = calls.find((l) => /OTP for .*: \d{6}/.test(l));
-  const match = line?.match(/: (\d{6})$/);
-  if (!match) throw new Error('no OTP logged');
-  return match[1]!;
-}
-
 describe('email OTP service', () => {
   it('signs up a new account with an email and marks it emailVerified', async () => {
     const spy = vi.spyOn(console, 'log');

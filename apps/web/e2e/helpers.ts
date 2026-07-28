@@ -46,7 +46,7 @@ export async function clearOtpRateLimits(): Promise<void> {
 export interface SuiteState {
   eventId: string;
   eventCode: string;
-  organizerPhone: string;
+  organizerEmail: string;
 }
 
 export function readState(): SuiteState {

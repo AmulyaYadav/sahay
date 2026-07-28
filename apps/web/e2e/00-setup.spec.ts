@@ -36,5 +36,5 @@ test('organizer creates the shared unlisted event', async ({ request }) => {
   expect(event.status).toBe('active');
   expect(event.code).toMatch(/\w/);
 
-  writeState({ eventId: event.id, eventCode: event.code, organizerPhone: ORGANIZER_EMAIL });
+  writeState({ eventId: event.id, eventCode: event.code, organizerEmail: ORGANIZER_EMAIL });
 });

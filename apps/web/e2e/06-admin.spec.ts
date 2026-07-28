@@ -37,7 +37,7 @@ async function fillModerationReason(page: Page, reason: string): Promise<void> {
 }
 
 test.beforeAll(async ({ browser, request }) => {
-  const { eventId, organizerPhone } = readState();
+  const { eventId, organizerEmail } = readState();
 
   // Promote the admin account via SQL, then sign in through the UI.
   const adminSession = await loginViaApi(request, ADMIN_EMAIL);
@@ -48,7 +48,7 @@ test.beforeAll(async ({ browser, request }) => {
   await loginViaUi(adminPage, ADMIN_EMAIL);
 
   // A pending public event, created by the organizer via the API.
-  const organizer = await loginViaApi(request, organizerPhone);
+  const organizer = await loginViaApi(request, organizerEmail);
   const now = Date.now();
   await apiRaw(request, '/events', {
     token: organizer.token,
