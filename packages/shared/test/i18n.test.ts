@@ -23,4 +23,8 @@ describe('i18n key parity', () => {
     expect(enKeys).not.toContain('auth.phoneLabel');
     expect(enKeys).not.toContain('reliability.phoneVerified');
   });
+
+  it('reliability.verifiedMeaning does not reference "Phone"', () => {
+    expect(en.reliability.verifiedMeaning).not.toContain('Phone');
+  });
 });

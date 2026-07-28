@@ -29,6 +29,8 @@ export const en = {
     tooManyAttempts: 'Too many attempts. Please wait and try again.',
     welcome: 'Welcome! You will appear to others as {{pseudonym}}.',
     logout: 'Log out',
+    otpEmailSubject: 'Your {{appName}} sign-in code',
+    otpEmailBody: 'Your {{appName}} sign-in code is {{code}}.',
   },
   onboarding: {
     intro1: 'Sahay connects people who need essential supplies with people nearby who are carrying them.',
@@ -166,7 +168,7 @@ export const en = {
     memberSince: 'Member since {{month}}',
     emailVerified: 'Email verified',
     notVerified: 'Account not independently verified',
-    verifiedMeaning: '“Phone verified” means only that this account confirmed a phone number. It does not verify the person or their items.',
+    verifiedMeaning: '“Email verified” means only that this account confirmed an email address. It does not verify the person or their items.',
     respondsPromptly: 'Usually responds promptly',
   },
   safety: {

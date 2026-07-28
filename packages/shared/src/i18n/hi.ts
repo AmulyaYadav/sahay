@@ -31,6 +31,8 @@ export const hi: StringCatalog = {
     tooManyAttempts: 'बहुत अधिक प्रयास। कृपया थोड़ी देर बाद कोशिश करें।',
     welcome: 'स्वागत है! आप दूसरों को {{pseudonym}} के रूप में दिखेंगे।',
     logout: 'लॉग आउट',
+    otpEmailSubject: 'आपका {{appName}} साइन-इन कोड',
+    otpEmailBody: 'आपका {{appName}} साइन-इन कोड {{code}} है।',
   },
   onboarding: {
     intro1: 'सहाय ज़रूरी सामान चाहने वालों को पास के उन लोगों से जोड़ता है जिनके पास वह सामान है।',
@@ -168,7 +170,7 @@ export const hi: StringCatalog = {
     memberSince: '{{month}} से सदस्य',
     emailVerified: 'ईमेल सत्यापित',
     notVerified: 'खाता स्वतंत्र रूप से सत्यापित नहीं है',
-    verifiedMeaning: '“फ़ोन सत्यापित” का अर्थ केवल यह है कि इस खाते ने एक फ़ोन नंबर की पुष्टि की है। यह व्यक्ति या उनके सामान की जाँच नहीं है।',
+    verifiedMeaning: '“ईमेल सत्यापित” का अर्थ केवल यह है कि इस खाते ने एक ईमेल पते की पुष्टि की है। यह व्यक्ति या उनके सामान की जाँच नहीं है।',
     respondsPromptly: 'आमतौर पर जल्दी जवाब देते हैं',
   },
   safety: {

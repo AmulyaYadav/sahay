@@ -30,7 +30,9 @@ export class ResendEmailProvider implements OtpProvider {
     const apiKey = config.RESEND_API_KEY;
     const from = config.RESEND_FROM;
     if (!apiKey || !from) throw new Error('resend provider not configured');
-    const subject = `${t(locale, 'common.appName')} — ${code}`;
+    const appName = t(locale, 'common.appName');
+    const subject = t(locale, 'auth.otpEmailSubject', { appName });
+    const body = t(locale, 'auth.otpEmailBody', { appName, code });
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -41,8 +43,8 @@ export class ResendEmailProvider implements OtpProvider {
         from,
         to: email,
         subject,
-        html: `<p>Your ${t(locale, 'common.appName')} sign-in code is <strong>${code}</strong>.</p>`,
-        text: `Your ${t(locale, 'common.appName')} sign-in code is ${code}.`,
+        html: `<p>${body.replace(code, `<strong>${code}</strong>`)}</p>`,
+        text: body,
       }),
     });
     if (!res.ok) {
