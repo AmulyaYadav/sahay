@@ -1,28 +1,35 @@
+/** Public landing: intro/marketing content + a live list of currently-active public events
+ * and their top wants, followed by a volunteer-app callout.
+ */
 import { Link } from 'react-router-dom';
 import { getToken } from '../api/client';
-import { useT } from '../i18n/LocaleContext';
-import { Banner, Card } from '../ui/components';
+import { useEvents } from '../api/hooks';
+import { PublicWants } from '../components/PublicWants';
+import { VolunteerCta } from '../components/VolunteerCta';
+import { useLocale } from '../i18n/LocaleContext';
+import { formatDateTime } from '../lib/format';
+import { Banner, Card, EmptyState, SkeletonCard } from '../ui/components';
 import { Icon } from '../ui/icons';
+import { IllustrationVignette } from '../ui/patterns';
 
 export function LandingPage() {
-  const t = useT();
+  const { t, locale } = useLocale();
   const authed = !!getToken();
+  const events = useEvents({});
 
   return (
     <div>
       <section className="landing-hero">
+        <IllustrationVignette name="box" size={96} />
         <h1>{t('landing.heroTitle')}</h1>
         <p>{t('landing.heroBody')}</p>
-        <div className="row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link to="/events" className="btn btn-primary btn-lg">
-            {t('landing.discoverCta')}
-          </Link>
-          {!authed ? (
+        {!authed ? (
+          <div className="row" style={{ justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/auth" className="btn btn-secondary btn-lg">
               {t('landing.signInCta')}
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </section>
 
       <section aria-labelledby="what-title">
@@ -30,6 +37,34 @@ export function LandingPage() {
           <h2 id="what-title">{t('landing.whatTitle')}</h2>
           <p className="text-soft">{t('landing.whatBody')}</p>
         </Card>
+      </section>
+
+      <section aria-labelledby="events-title" className="stack" style={{ marginTop: 'var(--sp-6)' }}>
+        <h2 id="events-title">{t('nav.events')}</h2>
+        {events.isLoading ? (
+          <div className="stack">
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+          </div>
+        ) : (events.data?.items.length ?? 0) === 0 ? (
+          <EmptyState title={t('landing.noActiveEvents')} />
+        ) : (
+          <div className="stack">
+            {events.data!.items.map((ev) => (
+              <Link key={ev.id} to={`/events/${ev.code}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Card>
+                  <div className="stack-sm">
+                    <strong style={{ fontSize: 'var(--fs-lg)' }}>{ev.title}</strong>
+                    <p className="text-xs text-soft" style={{ margin: 0 }}>
+                      {ev.areaLabel} · {formatDateTime(ev.startsAt, locale)}
+                    </p>
+                    <PublicWants wants={ev.wants} />
+                  </div>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="how-title">
@@ -86,6 +121,10 @@ export function LandingPage() {
             {t('landing.installBody')}
           </p>
         </Card>
+      </section>
+
+      <section style={{ marginTop: 'var(--sp-6)' }}>
+        <VolunteerCta />
       </section>
 
       <footer className="app-footer" style={{ marginTop: 'var(--sp-7)', marginLeft: 'calc(-1 * var(--sp-4))', marginRight: 'calc(-1 * var(--sp-4))' }}>
