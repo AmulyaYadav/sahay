@@ -27,6 +27,14 @@ export async function db<T extends Record<string, unknown> = Record<string, unkn
   return res.rows as T[];
 }
 
+/** Grant a user the admin role directly via SQL — there is deliberately no
+ * in-band (HTTP) way to mint admins/moderators, so tests that need one
+ * (e.g. the organizer creating events, which now requires moderator/admin)
+ * must promote via direct DB access. */
+export async function promoteToAdmin(userId: string): Promise<void> {
+  await db(`UPDATE users SET role = 'admin' WHERE id = $1`, [userId]);
+}
+
 /**
  * OTP starts are rate-limited per email (3/10 min) AND per IP (10/h) — far too
  * tight for a test suite that logs in dozens of times from 127.0.0.1. Clearing

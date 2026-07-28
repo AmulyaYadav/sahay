@@ -1,25 +1,32 @@
 /**
  * Moderation console: an admin (role granted via SQL — there is deliberately
  * no in-band way to mint admins) approves a pending public event, which then
- * appears in anonymous discovery; resolves the report filed in 05 with a
- * written reason; pauses the shared aid event (a requester immediately sees
- * the paused error) and unpauses it. Every action lands in the audit log.
+ * appears in public discovery on the landing page; resolves a filed report
+ * with a written reason; pauses the shared aid event (a direct API request
+ * immediately sees the paused error) and unpauses it. Every action lands in
+ * the audit log.
+ *
+ * The web app no longer has a request/match/chat UI (RequestFlow etc. were
+ * removed), so anything that used to be exercised through that UI here is
+ * now seeded/asserted via direct API calls instead.
  */
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
+  ApiError,
+  categoryBySlug,
+  contextAt,
+  createRequest,
   db,
   joinEvent,
   loginViaApi,
   loginViaUi,
   apiRaw,
   readState,
-  seedBrowserSession,
-  contextAt,
   type Session,
 } from './helpers';
 
 const ADMIN_EMAIL = 'e2e-admin-06@example.com';
-const REQUESTER_EMAIL = 'e2e-requester-04@example.com'; // reuses the (member) requester from 04
+const REQUESTER_EMAIL = 'e2e-requester-06@example.com';
 const PUBLIC_EVENT_TITLE = 'Sahay E2E Public Water Fair';
 
 test.describe.configure({ mode: 'serial' });
@@ -68,29 +75,48 @@ test.beforeAll(async ({ browser, request }) => {
 
   requester = await loginViaApi(request, REQUESTER_EMAIL);
   await joinEvent(request, requester.token, eventId).catch(() => undefined); // already a member is fine
+
+  // File a report directly against the event (no match/chat UI exists on web
+  // anymore, but the API still accepts event-scoped reports without a
+  // matchId) so the moderation-console test below has something to resolve.
+  await apiRaw(request, '/reports', {
+    token: requester.token,
+    body: {
+      category: 'unsafe_meeting',
+      eventId,
+      note: 'Reported via e2e fixture.',
+      preserveConversation: false,
+    },
+  });
 });
 
 test.afterAll(async () => {
   await adminCtx?.close();
 });
 
-test('admin approves a pending public event; it appears in anonymous discovery', async ({ browser }) => {
+test('admin approves a pending public event; it appears in public discovery', async ({ browser, request }) => {
   await adminPage.goto('/admin/events');
   const card = adminPage.locator('section.card', { hasText: PUBLIC_EVENT_TITLE });
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Approve public listing' }).click();
   await fillModerationReason(adminPage, 'Verified organizer; listing looks legitimate.');
 
-  // Anonymous discovery (fresh, unauthenticated context).
+  // Public discovery via the API — `/` (the landing page) lists exactly
+  // this: public, approved, active/scheduled events.
+  const { items } = await apiRaw<{ items: Array<{ title: string; visibility: string }> }>(request, '/events');
+  const listed = items.find((ev) => ev.title === PUBLIC_EVENT_TITLE);
+  expect(listed).toBeTruthy();
+  expect(listed!.visibility).toBe('public');
+
+  // And on the landing page itself, anonymously.
   const anon = await browser.newContext();
   const anonPage = await anon.newPage();
-  await anonPage.goto('/events');
-  await anonPage.getByLabel('Search', { exact: true }).fill('Public Water Fair');
+  await anonPage.goto('/');
   await expect(anonPage.getByRole('link', { name: PUBLIC_EVENT_TITLE })).toBeVisible({ timeout: 15_000 });
   await anon.close();
 });
 
-test('admin resolves the report from the safety spec with a written reason', async () => {
+test('admin resolves a filed report with a written reason', async () => {
   await adminPage.goto('/admin/reports');
   const card = adminPage.locator('section.card', { hasText: 'Unsafe meeting request' });
   await expect(card.first()).toBeVisible();
@@ -103,35 +129,30 @@ test('admin resolves the report from the safety spec with a written reason', asy
   expect(report!.status).toBe('resolved');
 });
 
-test('pausing the event blocks new requests with a clear error; unpause restores', async ({ browser }) => {
-  const { eventId, eventCode } = readState();
+test('pausing the event blocks new requests with a clear error; unpause restores', async ({ request }) => {
+  const { eventId } = readState();
 
-  await adminPage.goto('/admin/events');
-  await adminPage.getByRole('switch', { name: 'Pending approval' }).click(); // show all events
+  await adminPage.goto('/admin/events'); // "Pending approval" defaults off, so all events already show
   const card = adminPage.locator('section.card', { hasText: 'Sahay E2E Community Event' });
   await expect(card).toBeVisible();
   await card.getByRole('button', { name: 'Pause matching' }).click();
   await fillModerationReason(adminPage, 'Crowd crush risk reported near the main gate.');
 
-  // A member now sees the paused error when trying to request.
-  const ctx = await contextAt(browser, 0);
-  await seedBrowserSession(ctx, requester.token, {
-    event: { id: eventId, code: eventCode, title: 'Sahay E2E Community Event' },
-    locationConsent: true,
-  });
-  const page = await ctx.newPage();
-  await page.goto(`/events/${eventId}/request`);
-  await page.getByRole('button', { name: 'Sealed water bottle' }).click();
-  await page.getByRole('checkbox').check();
-  await page.getByRole('button', { name: 'Request help', exact: true }).click();
-  await expect(page.getByText('This event is paused; matching is temporarily stopped.')).toBeVisible({
-    timeout: 15_000,
-  });
-  await ctx.close();
+  // A member now sees the paused error when trying to request. The web app
+  // no longer has a request-flow UI (RequestFlow was removed), so this hits
+  // the API directly — the server-side guard (and its error) still exists.
+  const waterBottle = await categoryBySlug(request, 'water-bottle');
+  let error: unknown;
+  try {
+    await createRequest(request, requester.token, eventId, waterBottle, 1);
+  } catch (err) {
+    error = err;
+  }
+  expect(error).toBeInstanceOf(ApiError);
+  expect((error as ApiError).code).toBe('event_paused');
 
   // Unpause.
   await adminPage.goto('/admin/events');
-  await adminPage.getByRole('switch', { name: 'Pending approval' }).click();
   const card2 = adminPage.locator('section.card', { hasText: 'Sahay E2E Community Event' });
   await card2.getByRole('button', { name: 'Resume matching' }).click();
   await fillModerationReason(adminPage, 'Situation resolved by on-site stewards.');
