@@ -27,7 +27,7 @@ and the schemas together, never one alone.
 ## Events
 | GET | `/events` | query `zEventSearch` → `{items: zEventSummary[], nextCursor}` | *public*; only `public_approved` active/scheduled events |
 | GET | `/events/:idOrCode` | — → `zEventDetail` | *public* for public events; membership fields when authed; unlisted resolvable by exact code only |
-| POST | `/events` | `zCreateEvent` → `zEventDetail` | any user; public listing pends approval |
+| POST | `/events` | `zCreateEvent` → `zEventDetail` | moderator/admin only; public listing pends approval |
 | POST | `/events/:id/join` | `zJoinEvent` → `zEventDetail` | invite code enforced for invite_only |
 | POST | `/events/:id/leave` | — → `{ok}` | turns availability off, deletes location |
 | POST | `/events/:id/mute` | `{muted: boolean}` → `{ok}` |
@@ -92,6 +92,7 @@ and the schemas together, never one alone.
 | GET | `/admin/events?status=&pendingApproval=` | mod | event list incl. unlisted |
 | POST | `/admin/events/:id/notice` | mod | `{body, urgent}` → `{ok}` |
 | PATCH | `/admin/events/:id` | admin | event edits incl. status/pause/retention |
+| PATCH | `/admin/events/:id/wants` | admin | `{categorySlugs}` → `{ok}` — replaces the event's admin-declared "current wants" |
 | GET/PATCH | `/admin/categories` | admin | full catalogue management (denylist enforced) |
 | GET/PATCH | `/admin/flags` | admin | feature flags |
 | GET | `/admin/appeals` / POST `/admin/appeals/:id/resolve` | admin |
@@ -110,6 +111,11 @@ on reconnect. Invalid/expired token → close code 4401. Suspension mid-connecti
 `session.revoked` frame then close 4403.
 
 ## Notes
+- `zEventSummary`/`zEventDetail` both include a `wants: zPublicWant[]` field — the public
+  landing page's "current wants" list (admin-declared, then real aggregated demand, no
+  k-anonymity floor). Search results cap it at 3; the detail response returns the full
+  merged list. Only computed for `visibility: 'public'` events with `publicApproved: true`
+  (the same access rule as `/events/:id/dashboard`); every other event gets `wants: []`.
 - POST `/events` responds `{event: zEventDetail, inviteCode?: string}` rather than a bare
   `zEventDetail`: the invite code for `invite_only` events is issued exactly once, at creation
   time, to the creator. `zEventDetail` intentionally never carries the invite code, so
