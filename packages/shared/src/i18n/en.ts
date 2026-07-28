@@ -284,6 +284,12 @@ export const en = {
     signInCta: 'Sign in with your phone',
     installTitle: 'Works on any phone',
     installBody: 'Sahay runs in your browser — no install needed. Add it to your home screen for one-tap access; native apps are on the way.',
+    volunteerTitle: 'Become a Sahay volunteer',
+    volunteerBody: 'Download the Sahay app to offer help, respond to requests, and coordinate with your community during an event.',
+    volunteerCta: 'Get the Sahay app',
+    appStoreBadge: 'Download on the App Store',
+    playStoreBadge: 'Get it on Google Play',
+    noActiveEvents: 'No active events right now. Check back soon.',
   },
   pages: {
     guidelines: {
@@ -418,6 +424,9 @@ export const en = {
     safetyTitle: 'Safety information',
     medicalTitle: 'Medical help at this event',
     updated: 'Updated {{time}}',
+    wantsTitle: 'What this event needs',
+    wantsEmpty: 'No specific wants have been listed yet.',
+    wantAdminBadge: 'Confirmed need',
   },
   createEvent: {
     title: 'Create an event',
@@ -514,6 +523,11 @@ export const en = {
     subject: 'Subject',
     event: 'Event',
     actionLabel: 'Action',
+    createEvent: 'Create event',
+    deleteEvent: 'Delete event',
+    deleteEventConfirm: 'This event will be hidden from the public and any active exchanges will be cancelled.',
+    manageWants: 'Manage wants',
+    wantsHint: 'Pick the categories this event currently needs. They show first on the public page.',
   },
   misc: {
     notFoundTitle: 'Page not found',

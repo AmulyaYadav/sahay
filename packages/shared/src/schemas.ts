@@ -119,6 +119,14 @@ export const zSessionInfo = z.object({
 
 /* ------------------------------------------------------------------ events */
 
+export const zPublicWant = z.object({
+  categorySlug: z.string(),
+  source: z.enum(['admin', 'user']),
+  requestedQty: z.number().nullable(), // null when source is 'admin' and no real demand exists yet
+  requesterCount: z.number().int().nullable(), // null when source is 'admin'
+});
+export type PublicWant = z.infer<typeof zPublicWant>;
+
 export const zEventSummary = z.object({
   id: zUuid,
   code: z.string(), // short public identifier, e.g. "MELA-7K2F"
@@ -131,6 +139,7 @@ export const zEventSummary = z.object({
   endsAt: zIsoDate,
   timezone: z.string(),
   joined: z.boolean().optional(),
+  wants: z.array(zPublicWant), // top-3 merged wants on list views, full list on detail
 });
 export type EventSummary = z.infer<typeof zEventSummary>;
 
@@ -173,6 +182,11 @@ export const zEventSearch = zPagination.extend({
   near: zCoords.optional(), // client sends coarse coords voluntarily for "nearby"
   type: z.enum(EVENT_TYPES).optional(),
 });
+
+export const zAdminEventWants = z.object({
+  categorySlugs: z.array(z.string()).max(50),
+});
+export type AdminEventWantsInput = z.infer<typeof zAdminEventWants>;
 
 /* --------------------------------------------------------------- catalogue */
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { zOtpStart, zOtpVerify, zMe } from '../src/schemas.js';
+import { zOtpStart, zOtpVerify, zMe, zEventSummary, zPublicWant, zAdminEventWants } from '../src/schemas.js';
 
 describe('email auth schemas', () => {
   it('zOtpStart requires a valid email, rejects phone-shaped strings', () => {
@@ -19,5 +19,26 @@ describe('email auth schemas', () => {
   it('zMe exposes emailVerified, not phoneVerified', () => {
     expect(zMe.shape).toHaveProperty('emailVerified');
     expect(zMe.shape).not.toHaveProperty('phoneVerified');
+  });
+});
+
+describe('public wants schemas', () => {
+  it('zPublicWant requires categorySlug, source, and qty', () => {
+    const result = zPublicWant.safeParse({
+      categorySlug: 'water-bottle',
+      source: 'admin',
+      requestedQty: null,
+      requesterCount: null,
+    });
+    expect(result.success).toBe(true);
+    expect(zPublicWant.safeParse({ categorySlug: 'x', source: 'bogus' }).success).toBe(false);
+  });
+
+  it('zEventSummary includes a wants array', () => {
+    expect(zEventSummary.shape).toHaveProperty('wants');
+  });
+
+  it('zAdminEventWants accepts a list of category slugs', () => {
+    expect(zAdminEventWants.safeParse({ categorySlugs: ['water-bottle', 'blanket'] }).success).toBe(true);
   });
 });

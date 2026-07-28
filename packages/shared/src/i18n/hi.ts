@@ -286,6 +286,12 @@ export const hi: StringCatalog = {
     signInCta: 'फ़ोन से साइन इन करें',
     installTitle: 'हर फ़ोन पर चलता है',
     installBody: 'सहाय आपके ब्राउज़र में चलता है — कुछ इंस्टॉल करने की ज़रूरत नहीं। एक-टैप पहुँच के लिए इसे होम स्क्रीन पर जोड़ें; मोबाइल ऐप जल्द आ रहे हैं।',
+    volunteerTitle: 'सहाय स्वयंसेवक बनें',
+    volunteerBody: 'मदद देने, माँगों का जवाब देने और किसी कार्यक्रम के दौरान अपने समुदाय के साथ समन्वय करने के लिए सहाय ऐप डाउनलोड करें।',
+    volunteerCta: 'सहाय ऐप पाएँ',
+    appStoreBadge: 'App Store से डाउनलोड करें',
+    playStoreBadge: 'Google Play पर पाएँ',
+    noActiveEvents: 'अभी कोई सक्रिय कार्यक्रम नहीं है। कृपया थोड़ी देर बाद देखें।',
   },
   pages: {
     guidelines: {
@@ -420,6 +426,9 @@ export const hi: StringCatalog = {
     safetyTitle: 'सुरक्षा जानकारी',
     medicalTitle: 'इस कार्यक्रम में चिकित्सा सहायता',
     updated: '{{time}} पर अद्यतन',
+    wantsTitle: 'इस कार्यक्रम को क्या चाहिए',
+    wantsEmpty: 'अभी तक कोई विशेष ज़रूरत सूचीबद्ध नहीं की गई है।',
+    wantAdminBadge: 'पुष्टि की गई ज़रूरत',
   },
   createEvent: {
     title: 'कार्यक्रम बनाएँ',
@@ -516,6 +525,11 @@ export const hi: StringCatalog = {
     subject: 'विषय',
     event: 'कार्यक्रम',
     actionLabel: 'कार्रवाई',
+    createEvent: 'कार्यक्रम बनाएँ',
+    deleteEvent: 'कार्यक्रम हटाएँ',
+    deleteEventConfirm: 'यह कार्यक्रम सार्वजनिक रूप से छिपा दिया जाएगा और कोई भी सक्रिय आदान-प्रदान रद्द कर दिया जाएगा।',
+    manageWants: 'ज़रूरतें प्रबंधित करें',
+    wantsHint: 'उन श्रेणियों को चुनें जिनकी इस कार्यक्रम को अभी ज़रूरत है। ये सार्वजनिक पृष्ठ पर सबसे पहले दिखती हैं।',
   },
   misc: {
     notFoundTitle: 'पृष्ठ नहीं मिला',
