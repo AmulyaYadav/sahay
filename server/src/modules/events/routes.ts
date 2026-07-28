@@ -47,7 +47,7 @@ export function registerEventRoutes(app: FastifyInstance): void {
   // NOTE (documented in docs/api-surface.md Notes): responds
   // `{event: zEventDetail, inviteCode?}` — the invite code is issued exactly once,
   // at creation time, and zEventDetail intentionally never carries it.
-  app.post('/events', { preHandler: [app.authenticate] }, async (req) => {
+  app.post('/events', { preHandler: [app.authenticate, app.requireRole('moderator')] }, async (req) => {
     const auth = req.auth!;
     if (auth.status !== 'active') throw errors.accountRestricted();
     const body = zCreateEvent.parse(req.body);

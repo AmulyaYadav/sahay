@@ -11,6 +11,7 @@ import {
   type Category,
   type EventDetail,
   type EventSummary,
+  type PublicWant,
 } from '@sahay/shared';
 
 export type CreateEventInput = z.infer<typeof zCreateEvent>;
@@ -20,6 +21,7 @@ import { AppError, errors } from '../../lib/errors.js';
 import { shortCode } from '../../lib/crypto.js';
 import { rateLimit } from '../../lib/redis.js';
 import { mapCategory } from '../catalogue/service.js';
+import { computePublicWants } from './wants.js';
 
 type EventRow = typeof schema.events.$inferSelect;
 
@@ -29,7 +31,7 @@ function ewkt(lat: number, lng: number): string {
   return `SRID=4326;POINT(${lng} ${lat})`;
 }
 
-function toSummary(event: EventRow, joined?: boolean): EventSummary {
+function toSummary(event: EventRow, wants: PublicWant[] = [], joined?: boolean): EventSummary {
   return {
     id: event.id,
     code: event.code,
@@ -41,6 +43,7 @@ function toSummary(event: EventRow, joined?: boolean): EventSummary {
     startsAt: event.startsAt.toISOString(),
     endsAt: event.endsAt.toISOString(),
     timezone: event.timezone,
+    wants,
     ...(joined === undefined ? {} : { joined }),
   };
 }
@@ -101,6 +104,7 @@ export async function getMembership(eventId: string, userId: string) {
 export async function buildEventDetail(event: EventRow, userId: string | null): Promise<EventDetail> {
   const db = getDb();
   const membership = userId ? await getMembership(event.id, userId) : null;
+  const wants = (await computePublicWants([event.id])).get(event.id) ?? [];
   const notices = await db
     .select()
     .from(schema.eventNotices)
@@ -112,7 +116,7 @@ export async function buildEventDetail(event: EventRow, userId: string | null): 
     mapCategory(c.category, { maxRequestQty: c.maxRequestQty, maxOfferQty: c.maxOfferQty }),
   );
   return {
-    ...toSummary(event, userId ? membership != null : undefined),
+    ...toSummary(event, wants, userId ? membership != null : undefined),
     description: event.description,
     safetyInfo: event.safetyInfo,
     medicalInfo: event.medicalInfo,
@@ -297,7 +301,10 @@ export async function searchEvents(
     joinedIds = new Set(ms.map((m) => m.eventId));
   }
 
-  const items = rows.map((r) => toSummary(r, userId ? joinedIds.has(r.id) : undefined));
+  const wantsByEvent = await computePublicWants(rows.map((r) => r.id));
+  const items = rows.map((r) =>
+    toSummary(r, (wantsByEvent.get(r.id) ?? []).slice(0, 3), userId ? joinedIds.has(r.id) : undefined),
+  );
   const last = rows[rows.length - 1];
   const nextCursor =
     !near && rows.length === input.limit && last ? `${last.startsAt.toISOString()}|${last.id}` : null;

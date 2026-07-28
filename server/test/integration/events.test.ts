@@ -50,8 +50,52 @@ const baseEvent = {
 };
 
 describe('POST /events', () => {
+  it('is rejected for a non-moderator', async () => {
+    const user = await makeAuthedUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/events',
+      headers: user.headers,
+      payload: {
+        title: 'Test Drive',
+        description: '',
+        type: 'community_event',
+        visibility: 'unlisted',
+        areaLabel: 'Somewhere',
+        center: { lat: 18.5, lng: 73.8 },
+        radiusM: 2000,
+        startsAt: new Date().toISOString(),
+        endsAt: new Date(Date.now() + 3600_000).toISOString(),
+      },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('event search and detail responses include a wants array', async () => {
+    const admin = await makeAuthedUser({ role: 'admin' });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/v1/events',
+      headers: admin.headers,
+      payload: {
+        title: 'Wants Test Event',
+        description: '',
+        type: 'community_event',
+        visibility: 'public',
+        areaLabel: 'Somewhere',
+        center: { lat: 18.5, lng: 73.8 },
+        radiusM: 2000,
+        startsAt: new Date(Date.now() - 3600_000).toISOString(),
+        endsAt: new Date(Date.now() + 3600_000).toISOString(),
+      },
+    });
+    expect(created.statusCode).toBe(200);
+    const detail = await app.inject({ url: `/api/v1/events/${created.json().event.code}` });
+    expect(detail.json().wants).toEqual([]);
+  });
+
   it('creates an event, coarsens the center, and auto-joins the creator as event_admin', async () => {
-    const { headers } = await makeAuthedUser();
+    const { headers } = await makeAuthedUser({ role: 'moderator' });
     const res = await app.inject({ method: 'POST', url: '/api/v1/events', headers, payload: baseEvent });
     expect(res.statusCode).toBe(200);
     const { event, inviteCode } = res.json();
@@ -71,7 +115,7 @@ describe('POST /events', () => {
   });
 
   it('returns the invite code once, at creation, for invite-only events', async () => {
-    const { headers } = await makeAuthedUser();
+    const { headers } = await makeAuthedUser({ role: 'moderator' });
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/events',
@@ -88,11 +132,11 @@ describe('POST /events', () => {
   });
 
   it('detects duplicates: same title, within 5 km, overlapping window', async () => {
-    const { headers } = await makeAuthedUser();
+    const { headers } = await makeAuthedUser({ role: 'moderator' });
     const first = await app.inject({ method: 'POST', url: '/api/v1/events', headers, payload: baseEvent });
     expect(first.statusCode).toBe(200);
 
-    const { headers: otherHeaders } = await makeAuthedUser();
+    const { headers: otherHeaders } = await makeAuthedUser({ role: 'moderator' });
     const dupe = await app.inject({
       method: 'POST',
       url: '/api/v1/events',
