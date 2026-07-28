@@ -135,30 +135,6 @@ export function useCreateEvent() {
   });
 }
 
-export function useJoinEvent(eventId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: { inviteCode?: string }) => api<EventDetail>(`/events/${eventId}/join`, { body }),
-    onSuccess: (detail) => {
-      qc.setQueryData(['event', detail.id], detail);
-      qc.setQueryData(['event', detail.code], detail);
-      void qc.invalidateQueries({ queryKey: ['events'] });
-    },
-  });
-}
-
-export function useLeaveEvent(eventId: string) {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => api<{ ok: boolean }>(`/events/${eventId}/leave`, { method: 'POST', body: {} }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['event'] });
-      void qc.invalidateQueries({ queryKey: ['events'] });
-      void qc.invalidateQueries({ queryKey: ['availability'] });
-    },
-  });
-}
-
 /* --------------------------------------------------------------- catalogue */
 
 export function useCatalogue() {
