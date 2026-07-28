@@ -9,6 +9,15 @@
  * The web app no longer has a request/match/chat UI (RequestFlow etc. were
  * removed), so anything that used to be exercised through that UI here is
  * now seeded/asserted via direct API calls instead.
+ *
+ * The admin console web UI was also trimmed to event CRUD + wants management
+ * only (reports/users/categories/flags/appeals/audit/stats sections were
+ * removed from this web app — see ADR-0012). The server endpoints backing
+ * report resolution and the audit log are unchanged and still enforced, so
+ * this spec now drives report resolution through the `/admin/moderate` API
+ * directly (the same endpoint the removed Reports section used to call) and
+ * asserts the audit trail via the database rather than a deleted admin UI
+ * page.
  */
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import {
@@ -35,6 +44,7 @@ test.setTimeout(150_000);
 let adminCtx: BrowserContext;
 let adminPage: Page;
 let requester: Session;
+let admin: Session;
 
 async function fillModerationReason(page: Page, reason: string): Promise<void> {
   const dialog = page.getByRole('dialog');
@@ -47,8 +57,8 @@ test.beforeAll(async ({ browser, request }) => {
   const { eventId, organizerEmail } = readState();
 
   // Promote the admin account via SQL, then sign in through the UI.
-  const adminSession = await loginViaApi(request, ADMIN_EMAIL);
-  await db(`UPDATE users SET role = 'admin' WHERE id = $1`, [adminSession.user.id]);
+  admin = await loginViaApi(request, ADMIN_EMAIL);
+  await db(`UPDATE users SET role = 'admin' WHERE id = $1`, [admin.user.id]);
 
   adminCtx = await contextAt(browser, 0);
   adminPage = await adminCtx.newPage();
@@ -116,16 +126,26 @@ test('admin approves a pending public event; it appears in public discovery', as
   await anon.close();
 });
 
-test('admin resolves a filed report with a written reason', async () => {
-  await adminPage.goto('/admin/reports');
-  const card = adminPage.locator('section.card', { hasText: 'Unsafe meeting request' });
-  await expect(card.first()).toBeVisible();
-  await card.first().getByRole('button', { name: 'Resolve', exact: true }).click();
-  await fillModerationReason(adminPage, 'Reviewed evidence; warned the reported account.');
-
-  const [report] = await db<{ status: string }>(
-    `SELECT status FROM reports WHERE category = 'unsafe_meeting' ORDER BY created_at DESC LIMIT 1`,
+test('admin resolves a filed report with a written reason', async ({ request }) => {
+  // The web app's Reports section was removed (admin console is trimmed to
+  // event CRUD + wants management only), but the server's report-resolution
+  // endpoint is unchanged and still audited — exercise it directly via the
+  // same `/admin/moderate` API the old UI used to call.
+  const [pending] = await db<{ id: string }>(
+    `SELECT id FROM reports WHERE category = 'unsafe_meeting' ORDER BY created_at DESC LIMIT 1`,
   );
+  expect(pending).toBeTruthy();
+
+  await apiRaw(request, '/admin/moderate', {
+    token: admin.token,
+    body: {
+      action: 'report_resolve',
+      reportId: pending!.id,
+      reason: 'Reviewed evidence; warned the reported account.',
+    },
+  });
+
+  const [report] = await db<{ status: string }>(`SELECT status FROM reports WHERE id = $1`, [pending!.id]);
   expect(report!.status).toBe('resolved');
 });
 
@@ -172,8 +192,7 @@ test('every moderation action is audited', async () => {
   const actions = new Set(rows.map((r) => r.action));
   expect(actions).toEqual(new Set(['event_approve_public', 'report_resolve', 'event_pause', 'event_unpause']));
 
-  // The audit page renders them too (admin-only section).
-  await adminPage.goto('/admin/audit');
-  await expect(adminPage.getByRole('cell', { name: 'event_approve_public' }).first()).toBeVisible();
-  await expect(adminPage.getByRole('cell', { name: 'event_pause' }).first()).toBeVisible();
+  // The admin console no longer has an audit log UI section (trimmed to
+  // event CRUD + wants management — see ADR-0012), so there is no page to
+  // render these against; the database assertion above is the full check.
 });

@@ -18,13 +18,10 @@ import type {
   RequestView,
 } from '@sahay/shared';
 import {
-  zAdminReportView,
-  zAdminUserView,
   zAvailability,
   zBringSuggestion,
   zConversationView,
   zDataExport,
-  zFeatureFlag,
   zNotificationPrefs,
   zReportView,
   zSessionInfo,
@@ -39,9 +36,6 @@ export type ConversationView = z.infer<typeof zConversationView>;
 export type NotificationPrefs = z.infer<typeof zNotificationPrefs>;
 export type DataExport = z.infer<typeof zDataExport>;
 export type ReportView = z.infer<typeof zReportView>;
-export type AdminReportView = z.infer<typeof zAdminReportView>;
-export type AdminUserView = z.infer<typeof zAdminUserView>;
-export type FeatureFlag = z.infer<typeof zFeatureFlag>;
 
 /* -------------------------------------------------------------------- auth */
 
@@ -171,13 +165,6 @@ export function registerPushToken(token: string) {
 
 /* ------------------------------------------------------------------- admin */
 
-export function useAdminReports(status: string) {
-  return useQuery({
-    queryKey: ['adminReports', status],
-    queryFn: () => api<{ items: AdminReportView[] }>('/admin/reports', { query: { status } }),
-  });
-}
-
 export interface AdminModerateBody {
   action: string;
   targetUserId?: string;
@@ -193,18 +180,8 @@ export function useAdminModerate() {
   return useMutation({
     mutationFn: (body: AdminModerateBody) => api<{ ok: boolean }>('/admin/moderate', { body }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['adminReports'] });
-      void qc.invalidateQueries({ queryKey: ['adminUsers'] });
       void qc.invalidateQueries({ queryKey: ['adminEvents'] });
     },
-  });
-}
-
-export function useAdminUsers(q: string) {
-  return useQuery({
-    queryKey: ['adminUsers', q],
-    queryFn: () => api<{ items: AdminUserView[] }>('/admin/users', { query: { q } }),
-    enabled: q.length > 0,
   });
 }
 
@@ -245,102 +222,3 @@ export function useAdminSetWants(eventId: string) {
   });
 }
 
-export function useAdminCategories() {
-  return useQuery({
-    queryKey: ['adminCategories'],
-    queryFn: async () => {
-      const res = await api<{ items?: Category[]; categories?: Category[] }>('/admin/categories');
-      return res.items ?? res.categories ?? [];
-    },
-  });
-}
-
-export function useAdminPatchCategory() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: { id: string; active?: boolean; restricted?: boolean; maxRequestQty?: number; maxOfferQty?: number }) =>
-      api<unknown>('/admin/categories', { method: 'PATCH', body }),
-    onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: ['adminCategories'] });
-      void qc.invalidateQueries({ queryKey: ['catalogue'] });
-    },
-  });
-}
-
-export function useAdminFlags() {
-  return useQuery({
-    queryKey: ['adminFlags'],
-    queryFn: async () => {
-      const res = await api<{ items?: FeatureFlag[]; flags?: FeatureFlag[] }>('/admin/flags');
-      return res.items ?? res.flags ?? [];
-    },
-  });
-}
-
-export function useAdminPatchFlag() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (body: { key: string; enabled: boolean }) => api<unknown>('/admin/flags', { method: 'PATCH', body }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['adminFlags'] }),
-  });
-}
-
-export interface AdminAppeal {
-  id: string;
-  status?: string;
-  createdAt?: string;
-  userPseudonym?: string;
-  body?: string;
-  [key: string]: unknown;
-}
-
-export function useAdminAppeals() {
-  return useQuery({
-    queryKey: ['adminAppeals'],
-    queryFn: async () => {
-      const res = await api<{ items?: AdminAppeal[] }>('/admin/appeals');
-      return res.items ?? [];
-    },
-  });
-}
-
-export function useAdminResolveAppeal() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, reason, uphold }: { id: string; reason: string; uphold: boolean }) =>
-      api<unknown>(`/admin/appeals/${id}/resolve`, { body: { reason, uphold } }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ['adminAppeals'] }),
-  });
-}
-
-export interface AuditEntry {
-  id: string;
-  action?: string;
-  actorPseudonym?: string;
-  reason?: string;
-  createdAt?: string;
-  [key: string]: unknown;
-}
-
-export function useAdminAudit() {
-  return useQuery({
-    queryKey: ['adminAudit'],
-    queryFn: async () => {
-      const res = await api<{ items?: AuditEntry[]; nextCursor?: string | null }>('/admin/audit');
-      return res.items ?? [];
-    },
-  });
-}
-
-export function useAdminStats() {
-  return useQuery({
-    queryKey: ['adminStats'],
-    queryFn: () => api<Record<string, unknown>>('/admin/stats'),
-  });
-}
-
-export function useEmergencyShutdown() {
-  return useMutation({
-    mutationFn: (body: { reason: string }) => api<{ ok: boolean }>('/admin/emergency-shutdown', { body }),
-  });
-}
