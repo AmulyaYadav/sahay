@@ -1,0 +1,36 @@
+import type { PublicWant } from '@sahay/shared';
+import { useCatalogue } from '../api/hooks';
+import { useLocale } from '../i18n/LocaleContext';
+import { Badge, SkeletonCard } from '../ui/components';
+import { Icon } from '../ui/icons';
+import { CategoryChip } from '../ui/patterns';
+
+export function PublicWants({ wants }: { wants: PublicWant[] }) {
+  const { t, locale } = useLocale();
+  const catalogue = useCatalogue();
+
+  if (catalogue.isLoading) return <SkeletonCard lines={2} />;
+  if (wants.length === 0) return <p className="text-sm text-soft">{t('eventPage.wantsEmpty')}</p>;
+
+  const bySlug = new Map((catalogue.data?.categories ?? []).map((c) => [c.slug, c]));
+
+  return (
+    <div className="row-wrap">
+      {wants.map((w) => {
+        const cat = bySlug.get(w.categorySlug);
+        if (!cat) return null;
+        return (
+          <span key={w.categorySlug} className="chip" style={{ alignItems: 'center', gap: 'var(--sp-1)' }}>
+            <CategoryChip group={cat.group} icon={cat.icon} size="sm" />
+            <span>{cat.name[locale]}</span>
+            {w.source === 'admin' ? (
+              <Badge tone="ok">
+                <Icon name="check" size={12} label={t('eventPage.wantAdminBadge')} />
+              </Badge>
+            ) : null}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
