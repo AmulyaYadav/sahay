@@ -13,7 +13,7 @@ import { Icon } from './icons';
 /* ------------------------------------------------------------------ button */
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'destructive' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'destructive' | 'destructive-soft' | 'ghost' | 'success';
   loading?: boolean;
   block?: boolean;
   large?: boolean;
@@ -206,16 +206,20 @@ export function Chip({
   children,
   role = 'button',
   disabled,
+  tone,
 }: {
   selected?: boolean;
   onClick?: () => void;
   children: ReactNode;
   role?: 'button' | 'radio';
   disabled?: boolean;
+  /** Urgency segmented style (§4.8): selected = tinted bg + colored border + text. */
+  tone?: 'success' | 'warning' | 'error';
 }) {
+  const cls = tone ? `chip chip-${tone}` : 'chip';
   if (role === 'radio') {
     return (
-      <button type="button" role="radio" aria-checked={selected ?? false} className="chip" onClick={onClick} disabled={disabled}>
+      <button type="button" role="radio" aria-checked={selected ?? false} className={cls} onClick={onClick} disabled={disabled}>
         {children}
       </button>
     );
@@ -223,7 +227,7 @@ export function Chip({
   return (
     <button
       type="button"
-      className={onClick ? 'chip' : 'chip chip-static'}
+      className={onClick ? cls : `${cls} chip-static`}
       aria-pressed={onClick ? (selected ?? false) : undefined}
       onClick={onClick}
       disabled={disabled || !onClick}
@@ -239,11 +243,12 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <section className={className ? `card ${className}` : 'card'}>{children}</section>;
 }
 
+/** Pill badge: 12/16 medium, fully rounded, text + tint only (§1). */
 export function Badge({
   tone = 'neutral',
   children,
 }: {
-  tone?: 'neutral' | 'accent' | 'ok' | 'warn' | 'danger';
+  tone?: 'neutral' | 'accent' | 'ok' | 'warn' | 'danger' | 'highneed';
   children: ReactNode;
 }) {
   return <span className={tone === 'neutral' ? 'badge' : `badge badge-${tone}`}>{children}</span>;
@@ -286,9 +291,23 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
   );
 }
 
-export function EmptyState({ title, body, action }: { title: ReactNode; body?: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  body,
+  action,
+  icon = 'box',
+}: {
+  title: ReactNode;
+  body?: ReactNode;
+  action?: ReactNode;
+  /** Icon shown inside the soft tinted circle vignette (§5). */
+  icon?: string;
+}) {
   return (
     <div className="empty-state">
+      <span className="vignette-circle" aria-hidden="true">
+        <Icon name={icon} size={40} />
+      </span>
       <h3>{title}</h3>
       {body ? <p>{body}</p> : null}
       {action}

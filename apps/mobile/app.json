@@ -6,6 +6,11 @@
     "scheme": "sahay",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
+    "backgroundColor": "#F6F7F9",
+    "splash": {
+      "backgroundColor": "#2563EB",
+      "resizeMode": "contain"
+    },
     "newArchEnabled": true,
     "platforms": ["ios", "android", "web"],
     "ios": {

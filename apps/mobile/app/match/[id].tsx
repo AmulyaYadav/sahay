@@ -3,6 +3,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   Switch,
   TextInput,
@@ -20,6 +21,7 @@ import { useLocale, useT } from '../../src/locale';
 import { categoryBySlug, categoryName } from '../../src/catalogue';
 import { formatTime } from '../../src/format';
 import { radius, spacing, TOUCH, useTheme } from '../../src/theme';
+import { Icon } from '../../src/components/icons';
 import {
   Avatar,
   Badge,
@@ -30,10 +32,11 @@ import {
   Chip,
   ErrorView,
   Field,
-  Heading,
+  H3,
   LoadingView,
   Muted,
   MutedCaption,
+  QuickReplyChip,
   Row,
   Stepper,
 } from '../../src/components/ui';
@@ -252,7 +255,7 @@ export default function MatchScreen() {
             <Row gap={spacing.md}>
               <Avatar seed={m.peer.avatarSeed} />
               <View style={{ flex: 1, gap: spacing.xs }}>
-                <Heading>{m.peer.alias}</Heading>
+                <H3>{m.peer.alias}</H3>
                 <Row gap={spacing.xs} style={{ flexWrap: 'wrap' }}>
                   <Badge label={t(`reliability.${m.peer.reliabilityLabel}`)} tone="accent" />
                   <Badge label={t('reliability.completedAssists', { count: m.peer.completedAssists })} />
@@ -390,14 +393,18 @@ export default function MatchScreen() {
             <View key={lm.clientMsgId} style={{ alignItems: 'flex-end' }}>
               <View
                 style={{
-                  backgroundColor: th.colors.accentSoft,
-                  borderRadius: radius.md,
+                  backgroundColor: lm.status === 'failed' ? th.colors.errorTint : th.colors.success,
+                  borderRadius: radius.lg,
+                  borderBottomRightRadius: 4,
                   padding: spacing.md,
                   maxWidth: '80%',
                   opacity: lm.status === 'sending' ? 0.7 : 1,
+                  gap: 2,
                 }}
               >
-                <Body>{lm.kind === 'quick' ? t(`chat.quick.${lm.body}`) : lm.body}</Body>
+                <Body color={lm.status === 'failed' ? th.colors.text : th.colors.textOnColor}>
+                  {lm.kind === 'quick' ? t(`chat.quick.${lm.body}`) : lm.body}
+                </Body>
                 {lm.status === 'failed' ? (
                   <Button
                     title={t('chat.sendFailed')}
@@ -406,7 +413,7 @@ export default function MatchScreen() {
                     onPress={() => void send(lm.kind, lm.body, lm.clientMsgId)}
                   />
                 ) : (
-                  <MutedCaption>{t('misc.sending')}</MutedCaption>
+                  <MutedCaption color="#FFFFFFB3">{t('misc.sending')}</MutedCaption>
                 )}
               </View>
             </View>
@@ -428,15 +435,19 @@ export default function MatchScreen() {
           >
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
               {quickReplies.map((qr) => (
-                <Chip key={qr} label={t(`chat.quick.${qr}`)} onPress={() => void send('quick', qr)} />
+                <QuickReplyChip
+                  key={qr}
+                  label={t(`chat.quick.${qr}`)}
+                  onPress={() => void send('quick', qr)}
+                />
               ))}
             </ScrollView>
-            <Row gap={spacing.sm}>
+            <Row gap={spacing.sm} style={{ alignItems: 'flex-end' }}>
               <TextInput
                 allowFontScaling
                 accessibilityLabel={t('chat.placeholder')}
                 placeholder={t('chat.placeholder')}
-                placeholderTextColor={th.colors.muted}
+                placeholderTextColor={th.colors.textSecondary}
                 value={draft}
                 onChangeText={(v) => setDraft(v.slice(0, LIMITS.maxMessageLength))}
                 multiline
@@ -444,23 +455,36 @@ export default function MatchScreen() {
                   flex: 1,
                   minHeight: TOUCH,
                   maxHeight: 120,
-                  borderRadius: radius.md,
+                  borderRadius: radius.xl,
                   borderWidth: 1,
                   borderColor: th.colors.border,
-                  backgroundColor: th.colors.bg,
+                  backgroundColor: th.colors.canvas,
                   color: th.colors.text,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm,
-                  fontSize: 16,
+                  paddingHorizontal: spacing.lg,
+                  paddingVertical: spacing.md,
+                  fontSize: 14,
+                  lineHeight: 20,
                 }}
               />
-              <Button
-                title="➤"
+              {/* Circular green send button */}
+              <Pressable
+                accessibilityRole="button"
                 accessibilityLabel={t('common.ok')}
-                small
+                accessibilityState={{ disabled: !draft.trim() }}
                 disabled={!draft.trim()}
                 onPress={() => void send('text', draft)}
-              />
+                style={({ pressed }) => ({
+                  width: TOUCH,
+                  height: TOUCH,
+                  borderRadius: TOUCH / 2,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: th.colors.success,
+                  opacity: !draft.trim() ? 0.4 : pressed ? 0.85 : 1,
+                })}
+              >
+                <Icon name="send" size={20} color={th.colors.textOnColor} />
+              </Pressable>
             </Row>
           </View>
         ) : null}
@@ -471,6 +495,7 @@ export default function MatchScreen() {
 
 /* ------------------------------------------------------------ components */
 
+/** Chat bubbles (§4.11): peer = surface + border, left, small avatar; mine = green, right. */
 function MessageBubble({ msg }: { msg: Message }) {
   const t = useT();
   const th = useTheme();
@@ -481,34 +506,44 @@ function MessageBubble({ msg }: { msg: Message }) {
     return <MutedCaption center>{body}</MutedCaption>;
   }
   const ticks = msg.mine ? (msg.readAt ? '✓✓' : msg.deliveredAt ? '✓✓' : '✓') : '';
-  const tickColor = msg.readAt ? th.colors.accent : th.colors.muted;
+  const metaColor = msg.mine ? '#FFFFFFB3' : th.colors.textSecondary;
+  const tickColor = msg.mine && msg.readAt ? '#FFFFFF' : metaColor;
+  const bubble = (
+    <View
+      accessibilityLabel={`${msg.senderAlias}: ${body}`}
+      style={{
+        backgroundColor: msg.mine ? th.colors.success : th.colors.surface,
+        borderRadius: radius.lg,
+        borderBottomRightRadius: msg.mine ? 4 : radius.lg,
+        borderBottomLeftRadius: msg.mine ? radius.lg : 4,
+        borderWidth: msg.mine ? 0 : 1,
+        borderColor: th.colors.border,
+        padding: spacing.md,
+        maxWidth: '80%',
+        gap: 2,
+      }}
+    >
+      <Body color={msg.mine ? th.colors.textOnColor : th.colors.text}>{body}</Body>
+      <Row gap={4} style={{ alignSelf: 'flex-end' }}>
+        <MutedCaption color={metaColor}>{formatTime(msg.createdAt, locale)}</MutedCaption>
+        {ticks ? (
+          <MutedCaption
+            color={tickColor}
+            accessibilityLabel={msg.readAt ? t('misc.read') : t('misc.delivered')}
+          >
+            {ticks}
+          </MutedCaption>
+        ) : null}
+      </Row>
+    </View>
+  );
+  if (msg.mine) {
+    return <View style={{ alignItems: 'flex-end' }}>{bubble}</View>;
+  }
   return (
-    <View style={{ alignItems: msg.mine ? 'flex-end' : 'flex-start' }}>
-      <View
-        accessibilityLabel={`${msg.senderAlias}: ${body}`}
-        style={{
-          backgroundColor: msg.mine ? th.colors.accentSoft : th.colors.card,
-          borderRadius: radius.md,
-          borderWidth: 1,
-          borderColor: th.colors.border,
-          padding: spacing.md,
-          maxWidth: '80%',
-          gap: 2,
-        }}
-      >
-        <Body>{body}</Body>
-        <Row gap={4} style={{ alignSelf: 'flex-end' }}>
-          <MutedCaption>{formatTime(msg.createdAt, locale)}</MutedCaption>
-          {ticks ? (
-            <MutedCaption
-              color={tickColor}
-              accessibilityLabel={msg.readAt ? t('misc.read') : t('misc.delivered')}
-            >
-              {ticks}
-            </MutedCaption>
-          ) : null}
-        </Row>
-      </View>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+      <Avatar seed={msg.senderAlias} size={24} />
+      {bubble}
     </View>
   );
 }

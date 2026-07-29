@@ -13,7 +13,21 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { avatarFromSeed } from '@sahay/shared';
-import { radius, spacing, TOUCH, type as typeScale, useTheme, type Theme } from '../theme';
+import {
+  cardShadow,
+  categoryTint,
+  radius,
+  shortagePill,
+  spacing,
+  tabularNums,
+  TOUCH,
+  type as typeScale,
+  lineHeights,
+  useTheme,
+  type Theme,
+} from '../theme';
+import { Icon, type IconName } from './icons';
+import { EmptyCircleVignette } from './vignettes';
 import { useT } from '../locale';
 
 /* ------------------------------------------------------------------- text */
@@ -41,7 +55,7 @@ function makeText(size: number, weight: TextStyle['fontWeight'] = '400') {
             fontWeight: weight,
             color: color ?? th.colors.text,
             textAlign: center ? 'center' : undefined,
-            lineHeight: size * 1.4,
+            lineHeight: lineHeights[size] ?? Math.round(size * 1.45),
           },
           style,
         ]}
@@ -52,12 +66,14 @@ function makeText(size: number, weight: TextStyle['fontWeight'] = '400') {
   };
 }
 
-export const Title = makeText(typeScale.title, '700');
+/** Warm Relief type scale: H1 28/36·700, H2 20/28·600, H3 16/24·600, Body 14/20, Caption 12/16·500. */
+export const Title = makeText(typeScale.h1, '700');
 export const Heading = makeText(typeScale.heading, '600');
+export const H3 = makeText(typeScale.h3, '600');
 export const Body = makeText(typeScale.body);
 export const BodyBold = makeText(typeScale.body, '600');
 export const Label = makeText(typeScale.label);
-export const Caption = makeText(typeScale.caption);
+export const Caption = makeText(typeScale.caption, '500');
 
 export function Muted(props: TxtProps) {
   const th = useTheme();
@@ -78,28 +94,31 @@ export function Card({
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  tone?: 'default' | 'accent' | 'danger' | 'warn';
+  tone?: 'default' | 'accent' | 'danger' | 'warn' | 'success';
 }) {
   const th = useTheme();
   const bg =
     tone === 'accent'
-      ? th.colors.accentSoft
+      ? th.colors.primaryTint
       : tone === 'danger'
-        ? th.colors.dangerSoft
+        ? th.colors.errorTint
         : tone === 'warn'
-          ? th.colors.warnSoft
-          : th.colors.card;
+          ? th.colors.warningTint
+          : tone === 'success'
+            ? th.colors.successTint
+            : th.colors.surface;
   return (
     <View
       style={[
         {
           backgroundColor: bg,
-          borderRadius: radius.md,
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: th.colors.border,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: tone && tone !== 'default' ? 'transparent' : th.colors.border,
           padding: spacing.lg,
           gap: spacing.sm,
         },
+        tone === undefined || tone === 'default' ? cardShadow(th) : null,
         style,
       ]}
     >
@@ -128,7 +147,7 @@ export function Gap({ size = spacing.md }: { size?: number }) {
 
 /* ---------------------------------------------------------------- buttons */
 
-type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'success';
+type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'dangerSoft' | 'ghost' | 'success';
 
 export function Button({
   title,
@@ -139,6 +158,7 @@ export function Button({
   accessibilityLabel,
   style,
   small,
+  icon,
 }: {
   title: string;
   onPress: () => void;
@@ -148,9 +168,11 @@ export function Button({
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   small?: boolean;
+  icon?: IconName;
 }) {
   const th = useTheme();
   const palette = paletteFor(variant, th);
+  const tall = !small && (variant === 'primary' || variant === 'danger' || variant === 'success');
   return (
     <Pressable
       accessibilityRole="button"
@@ -160,7 +182,7 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         {
-          minHeight: TOUCH,
+          minHeight: tall ? 48 : TOUCH,
           borderRadius: radius.md,
           alignItems: 'center',
           justifyContent: 'center',
@@ -168,18 +190,19 @@ export function Button({
           gap: spacing.sm,
           paddingHorizontal: small ? spacing.md : spacing.lg,
           paddingVertical: small ? spacing.sm : spacing.md,
-          backgroundColor: palette.bg,
+          backgroundColor: pressed && palette.bgPressed ? palette.bgPressed : palette.bg,
           borderWidth: palette.borderWidth,
           borderColor: palette.border,
-          opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
+          opacity: disabled ? 0.4 : pressed && !palette.bgPressed ? 0.85 : 1,
         },
         style,
       ]}
     >
       {loading ? <ActivityIndicator color={palette.fg} /> : null}
+      {icon && !loading ? <Icon name={icon} size={18} color={palette.fg} /> : null}
       <Text
         allowFontScaling
-        style={{ color: palette.fg, fontSize: typeScale.body, fontWeight: '600' }}
+        style={{ color: palette.fg, fontSize: typeScale.body, lineHeight: 20, fontWeight: '500' }}
       >
         {title}
       </Text>
@@ -188,17 +211,20 @@ export function Button({
 }
 
 function paletteFor(variant: ButtonVariant, th: Theme) {
+  const c = th.colors;
   switch (variant) {
     case 'primary':
-      return { bg: th.colors.accent, fg: th.colors.onAccent, border: th.colors.accent, borderWidth: 0 };
+      return { bg: c.primary, bgPressed: c.primaryStrong, fg: c.textOnColor, border: 'transparent', borderWidth: 0 };
     case 'danger':
-      return { bg: th.colors.danger, fg: th.colors.onAccent, border: th.colors.danger, borderWidth: 0 };
+      return { bg: c.error, bgPressed: undefined, fg: c.textOnColor, border: 'transparent', borderWidth: 0 };
+    case 'dangerSoft':
+      return { bg: c.errorTint, bgPressed: undefined, fg: c.error, border: 'transparent', borderWidth: 0 };
     case 'success':
-      return { bg: th.colors.success, fg: th.colors.onAccent, border: th.colors.success, borderWidth: 0 };
+      return { bg: c.success, bgPressed: undefined, fg: c.textOnColor, border: 'transparent', borderWidth: 0 };
     case 'secondary':
-      return { bg: th.colors.card, fg: th.colors.accent, border: th.colors.accent, borderWidth: 1 };
+      return { bg: c.surface, bgPressed: undefined, fg: c.primary, border: c.primaryBorder, borderWidth: 1 };
     case 'ghost':
-      return { bg: 'transparent', fg: th.colors.muted, border: 'transparent', borderWidth: 0 };
+      return { bg: 'transparent', bgPressed: undefined, fg: c.primary, border: 'transparent', borderWidth: 0 };
   }
 }
 
@@ -216,12 +242,13 @@ export function PressableRow({
       style={({ pressed }) => [
         {
           minHeight: TOUCH,
-          backgroundColor: pressed ? th.colors.cardAlt : th.colors.card,
-          borderRadius: radius.md,
-          borderWidth: StyleSheet.hairlineWidth,
+          backgroundColor: pressed ? th.colors.cardAlt : th.colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
           borderColor: th.colors.border,
           padding: spacing.lg,
         },
+        cardShadow(th),
         style,
       ]}
     >
@@ -232,6 +259,10 @@ export function PressableRow({
 
 /* ------------------------------------------------------------------ chips */
 
+/**
+ * Segmented chip (urgency, durations, units…): rounded-12; selected =
+ * tinted bg + colored 1px border + colored text; unselected = surface + border.
+ */
 export function Chip({
   label,
   selected,
@@ -246,21 +277,23 @@ export function Chip({
   tone?: 'default' | 'danger' | 'warn' | 'success';
 }) {
   const th = useTheme();
-  const toneColor =
+  const c = th.colors;
+  const { fg, tint } =
     tone === 'danger'
-      ? th.colors.danger
+      ? { fg: c.error, tint: c.errorTint }
       : tone === 'warn'
-        ? th.colors.warn
+        ? { fg: c.warning, tint: c.warningTint }
         : tone === 'success'
-          ? th.colors.success
-          : th.colors.accent;
+          ? { fg: c.success, tint: c.successTint }
+          : { fg: c.primary, tint: c.primaryTint };
   const content = (
     <Text
       allowFontScaling
       style={{
-        color: selected ? th.colors.onAccent : toneColor,
+        color: selected ? fg : c.text,
         fontSize: typeScale.label,
-        fontWeight: '600',
+        lineHeight: 20,
+        fontWeight: '500',
       }}
     >
       {label}
@@ -269,12 +302,13 @@ export function Chip({
   const chipStyle: ViewStyle = {
     minHeight: onPress ? TOUCH : undefined,
     justifyContent: 'center',
+    alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: onPress ? spacing.sm : spacing.xs,
-    borderRadius: radius.pill,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: toneColor,
-    backgroundColor: selected ? toneColor : 'transparent',
+    borderColor: selected ? fg : c.border,
+    backgroundColor: selected ? tint : c.surface,
   };
   if (!onPress) return <View style={chipStyle}>{content}</View>;
   return (
@@ -290,6 +324,46 @@ export function Chip({
   );
 }
 
+/** Fully-rounded quick-reply chip: surface + border. */
+export function QuickReplyChip({
+  label,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  const th = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        minHeight: TOUCH,
+        justifyContent: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.sm,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: th.colors.border,
+        backgroundColor: pressed ? th.colors.cardAlt : th.colors.surface,
+      })}
+    >
+      <Text
+        allowFontScaling
+        style={{ color: th.colors.text, fontSize: typeScale.label, lineHeight: 20, fontWeight: '500' }}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/* ------------------------------------------------------------------ pills */
+
+/** Pill badge: 12/16 medium, 2×10 padding, tint bg + colored text, no border. */
 export function Badge({
   label,
   tone = 'default',
@@ -298,26 +372,355 @@ export function Badge({
   tone?: 'default' | 'accent' | 'danger' | 'warn' | 'success';
 }) {
   const th = useTheme();
+  const c = th.colors;
   const map = {
-    default: { bg: th.colors.cardAlt, fg: th.colors.muted },
-    accent: { bg: th.colors.accentSoft, fg: th.colors.accent },
-    danger: { bg: th.colors.dangerSoft, fg: th.colors.danger },
-    warn: { bg: th.colors.warnSoft, fg: th.colors.warn },
-    success: { bg: th.colors.successSoft, fg: th.colors.success },
+    default: { bg: c.cardAlt, fg: c.textSecondary },
+    accent: { bg: c.primaryTint, fg: c.primary },
+    danger: { bg: c.errorTint, fg: c.error },
+    warn: { bg: c.warningTint, fg: c.warning },
+    success: { bg: c.successTint, fg: c.success },
   }[tone];
   return (
     <View
       style={{
         backgroundColor: map.bg,
         borderRadius: radius.pill,
-        paddingHorizontal: spacing.sm,
+        paddingHorizontal: 10,
         paddingVertical: 2,
         alignSelf: 'flex-start',
       }}
     >
-      <Text allowFontScaling style={{ color: map.fg, fontSize: typeScale.caption, fontWeight: '600' }}>
+      <Text
+        allowFontScaling
+        style={{ color: map.fg, fontSize: typeScale.caption, lineHeight: 16, fontWeight: '500' }}
+      >
         {label}
       </Text>
+    </View>
+  );
+}
+
+/** Shortage-level pill mapped per the design system (§1). */
+export function NeedPill({ level, label }: { level: string; label: string }) {
+  const th = useTheme();
+  const { bg, fg } = shortagePill(level, th);
+  return (
+    <View
+      style={{
+        backgroundColor: bg,
+        borderRadius: radius.pill,
+        paddingHorizontal: 10,
+        paddingVertical: 2,
+        alignSelf: 'flex-start',
+      }}
+    >
+      <Text
+        allowFontScaling
+        style={{ color: fg, fontSize: typeScale.caption, lineHeight: 16, fontWeight: '500' }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/** Success-tint "{n} available" pill for supply rows (§4.7). */
+export function AvailabilityBadge({ count }: { count: number }) {
+  const t = useT();
+  return <Badge label={t('inventory.available', { count })} tone="success" />;
+}
+
+/* ------------------------------------------------------- category visuals */
+
+/** 40–44pt rounded-12 tinted icon square with the category glyph (§4.6). */
+export function CategoryChip({
+  glyph,
+  group,
+  size = 40,
+}: {
+  glyph: string;
+  group?: string;
+  size?: number;
+}) {
+  const th = useTheme();
+  const tint = categoryTint(group, th);
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius.md,
+        backgroundColor: tint.bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text allowFontScaling={false} style={{ fontSize: size * 0.5 }}>
+        {glyph}
+      </Text>
+    </View>
+  );
+}
+
+/** Rounded-12 tinted square holding a stroke icon (quick actions, menus). */
+export function IconSquare({
+  name,
+  bg,
+  color,
+  size = 40,
+}: {
+  name: IconName;
+  bg: string;
+  color: string;
+  size?: number;
+}) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={{
+        width: size,
+        height: size,
+        borderRadius: radius.md,
+        backgroundColor: bg,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Icon name={name} size={size * 0.55} color={color} />
+    </View>
+  );
+}
+
+/* -------------------------------------------------------------- list rows */
+
+/** Category/menu list row: leading chip, title (+caption), trailing, chevron (§4.6). */
+export function ListRow({
+  leading,
+  title,
+  subtitle,
+  trailing,
+  chevron = true,
+  onPress,
+  accessibilityLabel,
+  style,
+}: {
+  leading?: React.ReactNode;
+  title: string;
+  subtitle?: React.ReactNode;
+  trailing?: React.ReactNode;
+  chevron?: boolean;
+  onPress?: () => void;
+  accessibilityLabel?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const th = useTheme();
+  const inner = (
+    <Row gap={spacing.md}>
+      {leading}
+      <View style={{ flex: 1, gap: 2 }}>
+        <BodyBold numberOfLines={2}>{title}</BodyBold>
+        {typeof subtitle === 'string' ? <MutedCaption>{subtitle}</MutedCaption> : subtitle}
+      </View>
+      {trailing}
+      {chevron && onPress ? (
+        <Icon name="chevron-right" size={18} color={th.colors.textSecondary} />
+      ) : null}
+    </Row>
+  );
+  if (!onPress) {
+    return (
+      <View
+        style={[
+          {
+            backgroundColor: th.colors.surface,
+            borderRadius: radius.lg,
+            borderWidth: 1,
+            borderColor: th.colors.border,
+            padding: spacing.md,
+            minHeight: TOUCH,
+            justifyContent: 'center',
+          },
+          cardShadow(th),
+          style,
+        ]}
+      >
+        {inner}
+      </View>
+    );
+  }
+  return (
+    <PressableRow
+      accessibilityLabel={accessibilityLabel ?? title}
+      onPress={onPress}
+      style={[{ padding: spacing.md, justifyContent: 'center' }, style]}
+    >
+      {inner}
+    </PressableRow>
+  );
+}
+
+/** Two side-by-side tappable tiles with tinted icon squares (§4.5). */
+export function QuickActionTile({
+  icon,
+  iconBg,
+  iconColor,
+  title,
+  subtitle,
+  onPress,
+  accessibilityLabel,
+}: {
+  icon: IconName;
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  subtitle?: string;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  const th = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? title}
+      onPress={onPress}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          minHeight: TOUCH,
+          backgroundColor: pressed ? th.colors.cardAlt : th.colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: th.colors.border,
+          padding: spacing.lg,
+          gap: spacing.md,
+        },
+        cardShadow(th),
+      ]}
+    >
+      <IconSquare name={icon} bg={iconBg} color={iconColor} />
+      <View style={{ gap: 2 }}>
+        <BodyBold>{title}</BodyBold>
+        {subtitle ? <MutedCaption>{subtitle}</MutedCaption> : null}
+      </View>
+    </Pressable>
+  );
+}
+
+/** Stat strip card: columns of number (20/700 tabular) + caption label (§4.12). */
+export function StatStrip({
+  stats,
+}: {
+  stats: { value: string | number; label: string }[];
+}) {
+  const th = useTheme();
+  return (
+    <View
+      style={[
+        {
+          flexDirection: 'row',
+          backgroundColor: th.colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: th.colors.border,
+          paddingVertical: spacing.lg,
+        },
+        cardShadow(th),
+      ]}
+    >
+      {stats.map((s, i) => (
+        <View
+          key={`${s.label}-${i}`}
+          accessibilityLabel={`${s.value} ${s.label}`}
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            gap: 2,
+            borderLeftWidth: i === 0 ? 0 : 1,
+            borderLeftColor: th.colors.border,
+            paddingHorizontal: spacing.sm,
+          }}
+        >
+          <Text
+            allowFontScaling
+            style={[
+              { fontSize: 20, lineHeight: 28, fontWeight: '700', color: th.colors.text },
+              tabularNums,
+            ]}
+          >
+            {s.value}
+          </Text>
+          <MutedCaption center>{s.label}</MutedCaption>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/** Countdown card: caption + big tabular timer + thin progress bar (§4.10). */
+export function CountdownCard({
+  caption,
+  timeLabel,
+  progress,
+  urgent,
+  accessibilityLabel,
+}: {
+  caption: string;
+  timeLabel: string;
+  /** 0..1 fraction of time remaining. */
+  progress: number;
+  urgent?: boolean;
+  accessibilityLabel?: string;
+}) {
+  const th = useTheme();
+  const fill = urgent ? th.colors.error : th.colors.primary;
+  const clamped = Math.max(0, Math.min(1, progress));
+  return (
+    <View
+      accessibilityLabel={accessibilityLabel}
+      style={[
+        {
+          backgroundColor: th.colors.surface,
+          borderRadius: radius.lg,
+          borderWidth: 1,
+          borderColor: th.colors.border,
+          padding: spacing.lg,
+          alignItems: 'center',
+          gap: spacing.sm,
+        },
+        cardShadow(th),
+      ]}
+    >
+      <MutedCaption>{caption}</MutedCaption>
+      <Text
+        allowFontScaling
+        style={[
+          { fontSize: 30, lineHeight: 38, fontWeight: '700', color: urgent ? th.colors.error : th.colors.text },
+          tabularNums,
+        ]}
+      >
+        {timeLabel}
+      </Text>
+      <View
+        style={{
+          alignSelf: 'stretch',
+          height: 4,
+          borderRadius: radius.pill,
+          backgroundColor: th.colors.cardAlt,
+          overflow: 'hidden',
+        }}
+      >
+        <View
+          style={{
+            width: `${clamped * 100}%`,
+            height: 4,
+            borderRadius: radius.pill,
+            backgroundColor: fill,
+          }}
+        />
+      </View>
     </View>
   );
 }
@@ -329,23 +732,23 @@ export function Field(props: TextInputProps & { label?: string }) {
   const { label, style, ...rest } = props;
   return (
     <View style={{ gap: spacing.xs }}>
-      {label ? <Muted>{label}</Muted> : null}
+      {label ? <MutedCaption>{label}</MutedCaption> : null}
       <TextInput
         allowFontScaling
-        placeholderTextColor={th.colors.muted}
+        placeholderTextColor={th.colors.textSecondary}
         accessibilityLabel={label ?? props.placeholder ?? undefined}
         {...rest}
         style={[
           {
-            minHeight: TOUCH,
+            minHeight: 48,
             borderRadius: radius.md,
             borderWidth: 1,
             borderColor: th.colors.border,
-            backgroundColor: th.colors.card,
+            backgroundColor: th.colors.surface,
             color: th.colors.text,
             paddingHorizontal: spacing.md,
             paddingVertical: spacing.sm,
-            fontSize: typeScale.body,
+            fontSize: typeScale.h3,
           },
           style,
         ]}
@@ -383,10 +786,12 @@ export function Stepper({
         borderRadius: radius.md,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: pressed ? th.colors.accentSoft : th.colors.cardAlt,
+        borderWidth: 1,
+        borderColor: pressed ? th.colors.primaryBorder : th.colors.border,
+        backgroundColor: pressed ? th.colors.primaryTint : th.colors.surface,
       })}
     >
-      <Text allowFontScaling style={{ fontSize: 24, color: th.colors.accent, fontWeight: '700' }}>
+      <Text allowFontScaling style={{ fontSize: 22, color: th.colors.primary, fontWeight: '700' }}>
         {label}
       </Text>
     </Pressable>
@@ -395,10 +800,22 @@ export function Stepper({
     <Row gap={spacing.md}>
       {btn('−', -step, t('misc.decrease'))}
       <View style={{ minWidth: 72, alignItems: 'center' }}>
-        <BodyBold accessibilityLabel={`${value} ${unitLabel ?? ''}`}>
+        <Text
+          allowFontScaling
+          accessibilityLabel={`${value} ${unitLabel ?? ''}`}
+          style={[
+            { fontSize: 20, lineHeight: 28, fontWeight: '700', color: th.colors.text },
+            tabularNums,
+          ]}
+        >
           {value}
-          {unitLabel ? ` ${unitLabel}` : ''}
-        </BodyBold>
+          {unitLabel ? (
+            <Text allowFontScaling style={{ fontSize: typeScale.body, fontWeight: '500' }}>
+              {' '}
+              {unitLabel}
+            </Text>
+          ) : null}
+        </Text>
       </View>
       {btn('+', step, t('misc.increase'))}
     </Row>
@@ -435,7 +852,7 @@ export function LoadingView() {
   const t = useT();
   return (
     <View style={styles.centerFill} accessibilityLabel={t('common.loading')}>
-      <ActivityIndicator size="large" color={th.colors.accent} />
+      <ActivityIndicator size="large" color={th.colors.primary} />
       <Gap size={spacing.sm} />
       <Muted>{t('common.loading')}</Muted>
     </View>
@@ -453,9 +870,16 @@ export function ErrorView({ message, onRetry }: { message?: string; onRetry?: ()
   );
 }
 
-export function EmptyState({ message }: { message: string }) {
+export function EmptyState({
+  message,
+  variant = 'package',
+}: {
+  message: string;
+  variant?: 'package' | 'search';
+}) {
   return (
-    <View style={{ padding: spacing.xl, alignItems: 'center' }}>
+    <View style={{ padding: spacing.xl, alignItems: 'center', gap: spacing.lg }}>
+      <EmptyCircleVignette variant={variant} />
       <Muted center>{message}</Muted>
     </View>
   );

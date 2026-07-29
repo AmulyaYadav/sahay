@@ -1,74 +1,88 @@
-import React, { useState } from 'react';
-import { View } from 'react-native';
+import React from 'react';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Body, Button, Gap, Title } from '../../src/components/ui';
+import { Body, BodyBold, Button, IconSquare, Row, Title } from '../../src/components/ui';
+import { ParcelHandsVignette } from '../../src/components/vignettes';
 import { useT } from '../../src/locale';
 import { spacing, useTheme } from '../../src/theme';
+import { K } from '../../src/storage';
 
 /**
- * Intro carousel: what Sahay is, the pseudonymity promise, and honest limits.
- * Three short screens, no marketing fluff.
+ * Welcome screen: what Sahay is, the pseudonymity promise, and honest limits —
+ * three value-prop rows under a flat vignette (Warm Relief frame 01).
  */
 export default function OnboardingIntro() {
   const t = useT();
   const th = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [page, setPage] = useState(0);
 
-  const pages = [
-    { title: t('common.appName'), body: t('onboarding.intro1') },
-    { title: t('common.tagline'), body: t('onboarding.intro2') },
-    { title: t('onboarding.safetyTitle'), body: t('onboarding.intro3') },
+  const props: { icon: 'hand-heart' | 'eye-off' | 'shield'; bg: string; fg: string; title: string; body: string }[] = [
+    {
+      icon: 'hand-heart',
+      bg: th.colors.primaryTint,
+      fg: th.colors.primary,
+      title: t('common.appName'),
+      body: t('onboarding.intro1'),
+    },
+    {
+      icon: 'eye-off',
+      bg: th.colors.successTint,
+      fg: th.colors.success,
+      title: t('common.tagline'),
+      body: t('onboarding.intro2'),
+    },
+    {
+      icon: 'shield',
+      bg: th.colors.warningTint,
+      fg: th.colors.warning,
+      title: t('onboarding.safetyTitle'),
+      body: t('onboarding.intro3'),
+    },
   ];
-  const current = pages[page] ?? pages[0]!;
-  const last = page === pages.length - 1;
+
+  const signIn = async () => {
+    await AsyncStorage.setItem(K.onboarded, '1').catch(() => {});
+    router.replace('/auth');
+  };
 
   return (
-    <View
-      style={{
-        flex: 1,
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{
+        flexGrow: 1,
         padding: spacing.xl,
-        paddingTop: insets.top + spacing.xxl,
+        paddingTop: insets.top + spacing.xl,
         paddingBottom: insets.bottom + spacing.xl,
         justifyContent: 'space-between',
+        gap: spacing.lg,
       }}
     >
-      <View style={{ gap: spacing.lg, flex: 1, justifyContent: 'center' }}>
-        <Title center>{current.title}</Title>
-        <Body center color={th.colors.muted}>
-          {current.body}
-        </Body>
-      </View>
-
-      <View style={{ gap: spacing.md }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: spacing.sm }}>
-          {pages.map((_, i) => (
-            <View
-              key={i}
-              accessibilityLabel={`${i + 1}/${pages.length}`}
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: i === page ? th.colors.accent : th.colors.border,
-              }}
-            />
+      <View style={{ gap: spacing.xl, flex: 1, justifyContent: 'center' }}>
+        <ParcelHandsVignette />
+        <Title center>{t('common.appName')}</Title>
+        <View style={{ gap: spacing.lg }}>
+          {props.map((p) => (
+            <Row key={p.icon} gap={spacing.md} style={{ alignItems: 'flex-start' }}>
+              <IconSquare name={p.icon} bg={p.bg} color={p.fg} />
+              <View style={{ flex: 1, gap: 2 }}>
+                <BodyBold>{p.title}</BodyBold>
+                <Body color={th.colors.textSecondary}>{p.body}</Body>
+              </View>
+            </Row>
           ))}
         </View>
-        <Gap size={spacing.sm} />
-        <Button
-          title={last ? t('onboarding.safetyAck') : t('common.next')}
-          onPress={() => {
-            if (last) router.push('/(onboarding)/language');
-            else setPage(page + 1);
-          }}
-        />
-        {page > 0 ? (
-          <Button title={t('common.back')} variant="ghost" onPress={() => setPage(page - 1)} />
-        ) : null}
       </View>
-    </View>
+
+      <View style={{ gap: spacing.sm }}>
+        <Button
+          title={t('onboarding.getStarted')}
+          onPress={() => router.push('/(onboarding)/language')}
+        />
+        <Button title={t('nav.signIn')} variant="ghost" onPress={() => void signIn()} />
+      </View>
+    </ScrollView>
   );
 }

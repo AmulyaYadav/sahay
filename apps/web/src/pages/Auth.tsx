@@ -8,6 +8,7 @@ import { useOtpStart, useOtpVerify } from '../api/hooks';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { useLocale } from '../i18n/LocaleContext';
 import { Banner, Button, Card, Input } from '../ui/components';
+import { CategoryChip, IllustrationVignette } from '../ui/patterns';
 import { useToast } from '../ui/Toast';
 
 export function AuthPage() {
@@ -85,13 +86,38 @@ export function AuthPage() {
   };
 
   return (
-    <div style={{ maxWidth: 440, margin: '0 auto' }} className="stack">
+    <div className="stack app-col-narrow">
       <div className="row">
         <h1 style={{ margin: 0, flex: 1 }}>{t('nav.signIn')}</h1>
         <LanguageToggle />
       </div>
 
-      <Card>
+      {/* 01_Onboarding-style intro */}
+      <div className="celebrate" style={{ padding: 'var(--sp-2) 0' }}>
+        <IllustrationVignette name="parcel-hands" size={128} />
+        <h2 style={{ margin: 0 }}>{t('common.tagline')}</h2>
+        <p className="text-sm text-soft" style={{ margin: 0, maxWidth: '44ch' }}>
+          {t('onboarding.intro1')}
+        </p>
+      </div>
+      <div className="value-rows" style={{ padding: '0 var(--sp-2)' }}>
+        {(
+          [
+            ['first_aid', 'hand', 'landing.value1t'],
+            ['clothing', 'box', 'landing.value2t'],
+            ['shelter', 'shield', 'landing.value3t'],
+          ] as const
+        ).map(([group, icon, title]) => (
+          <div key={title} className="value-row" style={{ alignItems: 'center' }}>
+            <CategoryChip group={group} icon={icon} size="sm" />
+            <div className="value-row-body">
+              <strong>{t(title)}</strong>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <Card className="card-lg">
         {step === 'email' ? (
           <form
             className="stack"
@@ -155,7 +181,7 @@ export function AuthPage() {
       <Banner tone="info" icon="shield">
         {t('onboarding.intro2')}
       </Banner>
-      <p className="text-xs text-soft text-center">{t('onboarding.intro3')}</p>
+      <p className="caption text-center">{t('onboarding.intro3')}</p>
     </div>
   );
 }

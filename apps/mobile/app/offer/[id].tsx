@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,16 +12,17 @@ import { categoryBySlug, categoryGlyph, categoryName } from '../../src/catalogue
 import { secondsUntil } from '../../src/format';
 import { spacing, useTheme } from '../../src/theme';
 import {
-  Badge,
   Body,
-  BodyBold,
   Button,
   Card,
+  CategoryChip,
+  CountdownCard,
   Gap,
   Heading,
   LoadingView,
   Muted,
   MutedCaption,
+  NeedPill,
   Row,
   Title,
 } from '../../src/components/ui';
@@ -45,6 +46,7 @@ export default function OfferScreen() {
   const offer: OfferView | undefined = offers.data?.items.find((o) => o.id === id);
 
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const totalSeconds = useRef<number | null>(null);
   const [busy, setBusy] = useState<'accept' | 'decline' | 'declineStop' | null>(null);
   const [expired, setExpired] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +56,7 @@ export default function OfferScreen() {
     if (!offer) return;
     const tick = () => {
       const s = secondsUntil(offer.respondBy);
+      if (totalSeconds.current === null) totalSeconds.current = Math.max(1, s);
       setSecondsLeft(s);
       if (s <= 0) setExpired(true);
     };
@@ -104,6 +107,7 @@ export default function OfferScreen() {
       <View
         style={{
           flex: 1,
+          backgroundColor: th.colors.canvas,
           padding: spacing.xl,
           paddingTop: insets.top + spacing.xxl,
           justifyContent: 'center',
@@ -119,9 +123,13 @@ export default function OfferScreen() {
 
   const cat = categoryBySlug(catalogue.data?.categories, offer.categorySlug);
   const catLabel = categoryName(cat, locale);
+  const mins = secondsLeft !== null ? Math.floor(secondsLeft / 60) : 0;
+  const secs = secondsLeft !== null ? secondsLeft % 60 : 0;
+  const timeLabel = `${mins}:${String(secs).padStart(2, '0')}`;
 
   return (
     <ScrollView
+      style={{ backgroundColor: th.colors.canvas }}
       contentContainerStyle={{
         flexGrow: 1,
         padding: spacing.xl,
@@ -133,10 +141,11 @@ export default function OfferScreen() {
     >
       <Title center>{t('offer.title')}</Title>
 
-      <Card tone="accent">
-        <Heading center>
-          {categoryGlyph(cat)} {catLabel}
-        </Heading>
+      <Card>
+        <View style={{ alignItems: 'center', gap: spacing.sm }}>
+          <CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} size={44} />
+          <Heading center>{catLabel}</Heading>
+        </View>
         <Body center>
           {t('offer.needs', {
             qty: offer.qtyRequested,
@@ -144,12 +153,19 @@ export default function OfferScreen() {
             category: catLabel,
           })}
         </Body>
-        <Body center color={th.colors.muted}>
+        <Body center color={th.colors.textSecondary}>
           {t('offer.youHave', { qty: offer.qtyYouHave, unit: t(`units.${offer.unit}`) })}
         </Body>
         <Row style={{ justifyContent: 'center', flexWrap: 'wrap' }} gap={spacing.sm}>
-          <Badge label={t(`proximity.${offer.proximity}`)} tone="accent" />
-          <Badge
+          <NeedPill level="possible_surplus" label={t(`proximity.${offer.proximity}`)} />
+          <NeedPill
+            level={
+              offer.urgency === 'urgent'
+                ? 'critical_shortage'
+                : offer.urgency === 'soon'
+                  ? 'moderate_need'
+                  : 'unknown'
+            }
             label={
               offer.urgency === 'urgent'
                 ? t('request.urgent')
@@ -157,23 +173,23 @@ export default function OfferScreen() {
                   ? t('request.soon')
                   : t('request.std')
             }
-            tone={offer.urgency === 'urgent' ? 'danger' : 'default'}
           />
         </Row>
         {offer.note ? <Muted center>“{offer.note}”</Muted> : null}
       </Card>
 
+      {/* Countdown card (§4.10) */}
       {secondsLeft !== null ? (
-        <BodyBold
-          center
-          color={secondsLeft <= 10 ? th.colors.danger : th.colors.text}
+        <CountdownCard
+          caption={t('offer.respondWithin')}
+          timeLabel={timeLabel}
+          progress={totalSeconds.current ? secondsLeft / totalSeconds.current : 0}
+          urgent={secondsLeft <= 10}
           accessibilityLabel={t('offer.respondIn', { seconds: secondsLeft })}
-        >
-          {t('offer.respondIn', { seconds: secondsLeft })}
-        </BodyBold>
+        />
       ) : null}
 
-      {error ? <Body center color={th.colors.danger}>{error}</Body> : null}
+      {error ? <Body center color={th.colors.error}>{error}</Body> : null}
 
       <View style={{ gap: spacing.md }}>
         <Button

@@ -1,60 +1,49 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { Tabs } from 'expo-router';
 import { useT } from '../../src/locale';
 import { useTheme } from '../../src/theme';
-
-function Glyph({ symbol, focused }: { symbol: string; focused: boolean }) {
-  return (
-    <Text allowFontScaling={false} style={{ fontSize: 20, opacity: focused ? 1 : 0.55 }}>
-      {symbol}
-    </Text>
-  );
-}
+import { Icon, type IconName } from '../../src/components/icons';
 
 export default function TabsLayout() {
   const t = useT();
   const th = useTheme();
+  const icon = (name: IconName) =>
+    function TabIcon({ color }: { color: string; focused: boolean }) {
+      return <Icon name={name} size={22} color={color} />;
+    };
   return (
     <Tabs
       screenOptions={{
-        headerStyle: { backgroundColor: th.colors.bg },
+        headerStyle: { backgroundColor: th.colors.canvas },
         headerTintColor: th.colors.text,
+        headerTitleStyle: { color: th.colors.text, fontWeight: '600' },
         headerShadowVisible: false,
-        tabBarStyle: { backgroundColor: th.colors.card, borderTopColor: th.colors.border },
-        tabBarActiveTintColor: th.colors.accent,
-        tabBarInactiveTintColor: th.colors.muted,
-        tabBarLabelStyle: { fontSize: 12 },
-        sceneStyle: { backgroundColor: th.colors.bg },
+        tabBarStyle: {
+          backgroundColor: th.colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: th.colors.border,
+        },
+        tabBarActiveTintColor: th.colors.primary,
+        tabBarInactiveTintColor: th.colors.textSecondary,
+        tabBarLabelStyle: { fontSize: 12, lineHeight: 16, fontWeight: '500' },
+        sceneStyle: { backgroundColor: th.colors.canvas },
       }}
     >
       <Tabs.Screen
         name="home"
-        options={{
-          title: t('tabs.home'),
-          tabBarIcon: ({ focused }) => <Glyph symbol="🏠" focused={focused} />,
-        }}
+        options={{ title: t('tabs.home'), headerShown: false, tabBarIcon: icon('home') }}
       />
       <Tabs.Screen
         name="events"
-        options={{
-          title: t('tabs.events'),
-          tabBarIcon: ({ focused }) => <Glyph symbol="📍" focused={focused} />,
-        }}
+        options={{ title: t('tabs.events'), tabBarIcon: icon('map-pin') }}
       />
       <Tabs.Screen
         name="supplies"
-        options={{
-          title: t('tabs.supplies'),
-          tabBarIcon: ({ focused }) => <Glyph symbol="🎒" focused={focused} />,
-        }}
+        options={{ title: t('tabs.supplies'), tabBarIcon: icon('backpack') }}
       />
       <Tabs.Screen
         name="profile"
-        options={{
-          title: t('tabs.profile'),
-          tabBarIcon: ({ focused }) => <Glyph symbol="👤" focused={focused} />,
-        }}
+        options={{ title: t('tabs.profile'), tabBarIcon: icon('user') }}
       />
     </Tabs>
   );

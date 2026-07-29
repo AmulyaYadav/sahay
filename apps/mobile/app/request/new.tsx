@@ -12,18 +12,20 @@ import { ensureLocationPermission, getCoarseCoords } from '../../src/locationPin
 import { useLocale, useT } from '../../src/locale';
 import { categoryById, categoryGlyph, categoryName, groupCategories } from '../../src/catalogue';
 import { spacing, useTheme } from '../../src/theme';
+import { Icon } from '../../src/components/icons';
 import {
   Body,
   BodyBold,
   Button,
   Card,
+  CategoryChip,
   Chip,
   Field,
   Gap,
   Heading,
+  ListRow,
   Muted,
   MutedCaption,
-  PressableRow,
   Row,
   Stepper,
 } from '../../src/components/ui';
@@ -101,38 +103,36 @@ export default function NewRequestScreen() {
     <ScrollView
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
     >
+      <Heading>{t('request.what')}</Heading>
+
       {/* Step 1: category */}
       {!cat ? (
-        <Card>
-          <Heading>{t('request.what')}</Heading>
+        <View style={{ gap: spacing.md }}>
           {[...grouped.entries()].map(([group, list]) => (
             <View key={group} style={{ gap: spacing.sm }}>
               <MutedCaption>{t(`groups.${group}`)}</MutedCaption>
               {list.map((c) => (
-                <PressableRow
+                <ListRow
                   key={c.id}
                   accessibilityLabel={categoryName(c, locale)}
+                  leading={<CategoryChip glyph={categoryGlyph(c)} group={c.group} />}
+                  title={categoryName(c, locale)}
                   onPress={() => {
                     setCategoryId(c.id);
                     setQty(1);
                   }}
-                  style={{ padding: spacing.md }}
-                >
-                  <Body>
-                    {categoryGlyph(c)} {categoryName(c, locale)}
-                  </Body>
-                </PressableRow>
+                />
               ))}
             </View>
           ))}
-        </Card>
+        </View>
       ) : (
         <>
+          {/* What + how many */}
           <Card>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Heading style={{ flex: 1 }}>
-                {categoryGlyph(cat)} {categoryName(cat, locale)}
-              </Heading>
+            <Row gap={spacing.md}>
+              <CategoryChip glyph={categoryGlyph(cat)} group={cat.group} />
+              <BodyBold style={{ flex: 1 }}>{categoryName(cat, locale)}</BodyBold>
               <Button
                 title={t('common.edit')}
                 variant="ghost"
@@ -140,9 +140,8 @@ export default function NewRequestScreen() {
                 onPress={() => setCategoryId(null)}
               />
             </Row>
-            {cat.warningKey ? <Body color={th.colors.warn}>{t(cat.warningKey)}</Body> : null}
-
-            <Muted>{t('request.howMany')}</Muted>
+            {cat.warningKey ? <Body color={th.colors.warning}>{t(cat.warningKey)}</Body> : null}
+            <MutedCaption>{t('request.howMany')}</MutedCaption>
             <Stepper
               value={qty}
               onChange={setQty}
@@ -152,12 +151,22 @@ export default function NewRequestScreen() {
             />
           </Card>
 
-          {/* Urgency */}
+          {/* Urgency: segmented chips — standard→green, soon→orange, urgent→red (§4.8) */}
           <Card>
             <BodyBold>{t('request.urgency')}</BodyBold>
             <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-              <Chip label={t('request.std')} selected={urgency === 'standard'} onPress={() => setUrgency('standard')} />
-              <Chip label={t('request.soon')} selected={urgency === 'soon'} onPress={() => setUrgency('soon')} />
+              <Chip
+                label={t('request.std')}
+                tone="success"
+                selected={urgency === 'standard'}
+                onPress={() => setUrgency('standard')}
+              />
+              <Chip
+                label={t('request.soon')}
+                tone="warn"
+                selected={urgency === 'soon'}
+                onPress={() => setUrgency('soon')}
+              />
               <Chip
                 label={t('request.urgent')}
                 selected={urgency === 'urgent'}
@@ -184,12 +193,25 @@ export default function NewRequestScreen() {
             />
           </Card>
 
-          {/* Location consent OR area hint */}
-          <Card>
-            <Body>{t('request.locationWhy')}</Body>
+          {/* Location consent card (§4.9) — green, pin icon right */}
+          <Card tone={useLocation ? 'success' : 'default'}>
+            <Row gap={spacing.md} style={{ alignItems: 'flex-start' }}>
+              <View style={{ flex: 1, gap: spacing.xs }}>
+                <BodyBold>
+                  {useLocation ? t('request.useLocation') : t('request.useArea')}
+                </BodyBold>
+                <MutedCaption>{t('request.locationWhy')}</MutedCaption>
+              </View>
+              <Icon
+                name="map-pin"
+                size={20}
+                color={useLocation ? th.colors.success : th.colors.textSecondary}
+              />
+            </Row>
             <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
               <Chip
                 label={t('request.useLocation')}
+                tone="success"
                 selected={useLocation}
                 onPress={() => setUseLocation(true)}
               />
@@ -232,14 +254,16 @@ export default function NewRequestScreen() {
                 accessibilityLabel={t('request.safetyAck')}
                 value={safetyAck}
                 onValueChange={setSafetyAck}
-                trackColor={{ true: th.colors.accent, false: th.colors.border }}
+                trackColor={{ true: th.colors.primary, false: th.colors.border }}
               />
             </Row>
           </Card>
 
-          {error ? <Body color={th.colors.danger}>{error}</Body> : null}
+          {error ? <Body color={th.colors.error}>{error}</Body> : null}
+          {/* "Send request" is a GREEN button (design system §1) */}
           <Button
             title={t('request.submit')}
+            variant="success"
             onPress={() => void submit()}
             loading={busy}
             disabled={!safetyAck || (!useLocation && !areaHint.trim())}

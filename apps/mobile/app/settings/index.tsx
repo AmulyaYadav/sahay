@@ -15,8 +15,8 @@ import {
   Field,
   Gap,
   Heading,
+  ListRow,
   MutedCaption,
-  PressableRow,
   Row,
 } from '../../src/components/ui';
 
@@ -120,9 +120,7 @@ export default function SettingsScreen() {
   };
 
   const link = (label: string, path: string) => (
-    <PressableRow accessibilityLabel={label} onPress={() => router.push(path as never)}>
-      <Body>{label} →</Body>
-    </PressableRow>
+    <ListRow title={label} accessibilityLabel={label} onPress={() => router.push(path as never)} />
   );
 
   return (
@@ -169,7 +167,7 @@ export default function SettingsScreen() {
         {busy === 'export' ? <MutedCaption>{t('settings.exportPending')}</MutedCaption> : null}
       </Card>
 
-      <Button title={t('auth.logout')} variant="secondary" onPress={() => void logout()} />
+      <Button title={t('auth.logout')} variant="dangerSoft" onPress={() => void logout()} />
 
       {/* Delete account */}
       <Card tone="danger">

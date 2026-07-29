@@ -1,4 +1,8 @@
-/** Countdown ring to a deadline. Announces politely; degrades to plain text under reduced motion. */
+/**
+ * Countdown card (§4.10): caption ("Respond within"), a big 700 tabular
+ * number, and a thin progress bar. Announces politely via visually-hidden
+ * text; the bar simply tracks the remaining fraction (no decorative motion).
+ */
 import { useEffect, useState } from 'react';
 import { useT } from '../i18n/LocaleContext';
 
@@ -19,48 +23,38 @@ export function useCountdown(deadline: string): number {
 export function CountdownRing({
   deadline,
   totalSeconds,
-  size = 88,
+  label,
   onExpire,
 }: {
   deadline: string;
   totalSeconds: number;
-  size?: number;
+  /** Caption above the number, e.g. "Respond within". */
+  label?: string;
   onExpire?: () => void;
 }) {
   const t = useT();
   const left = useCountdown(deadline);
-  const reduced = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   useEffect(() => {
     if (left === 0 && onExpire) onExpire();
   }, [left, onExpire]);
 
-  const r = (size - 10) / 2;
-  const c = 2 * Math.PI * r;
   const frac = totalSeconds > 0 ? Math.min(1, left / totalSeconds) : 0;
+  const low = left <= 10;
 
   return (
-    <div className="countdown-ring" style={{ width: size, height: size }}>
-      {!reduced ? (
-        <svg width={size} height={size} aria-hidden="true">
-          <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--c-border)" strokeWidth={6} fill="none" />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={left <= 10 ? 'var(--c-danger)' : 'var(--c-accent)'}
-            strokeWidth={6}
-            fill="none"
-            strokeDasharray={c}
-            strokeDashoffset={c * (1 - frac)}
-            strokeLinecap="round"
-          />
-        </svg>
-      ) : null}
-      <span className="countdown-ring-label">
+    <div className="countdown-card">
+      {label ? <span className="caption">{label}</span> : null}
+      <span className={low ? 'countdown-num countdown-num-low' : 'countdown-num'}>
         {left}
         <span className="visually-hidden"> {t('misc.secondsRemaining', { seconds: left })}</span>
       </span>
+      <div className="countdown-bar" aria-hidden="true">
+        <div
+          className={low ? 'countdown-bar-fill countdown-bar-fill-low' : 'countdown-bar-fill'}
+          style={{ width: `${frac * 100}%` }}
+        />
+      </div>
     </div>
   );
 }

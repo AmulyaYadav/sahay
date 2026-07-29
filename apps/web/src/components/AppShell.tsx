@@ -49,21 +49,29 @@ export function AppShell() {
               </span>
             </Link>
             <nav className="app-nav-desktop" aria-label={t('misc.menu')}>
+              <LanguageToggle />
+              <a href="/#how-it-works" className="app-nav-link">
+                {t('landing.howTitle')}
+              </a>
+              <a href="/#safety" className="app-nav-link">
+                {t('landing.safetyNav')}
+              </a>
+              <Link to="/support" className="app-nav-link">
+                {t('landing.faqNav')}
+              </Link>
               {items.map((item) => (
                 <NavItem key={item.to} {...item} />
               ))}
-              <LanguageToggle />
               {authed ? (
                 <button type="button" className="btn btn-secondary" onClick={signOut}>
                   {t('auth.logout')}
                 </button>
               ) : (
-                <Link to="/auth" className="btn btn-primary">
-                  {t('nav.signIn')}
+                <Link to="/auth" className="btn-admin-pill">
+                  {t('landing.signInCta')}
                 </Link>
               )}
             </nav>
-            <span className="spacer app-nav-mobile-spacer" style={{ flex: 1 }} />
             <span className="hide-desktop">
               <LanguageToggle />
             </span>

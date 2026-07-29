@@ -1,6 +1,7 @@
 /**
- * Small inline SVG icon set. Keys match the catalogue icon keys plus UI needs.
- * All icons are decorative by default (aria-hidden); pass `label` for meaningful ones.
+ * Small inline SVG icon set — consistent 1.75px-stroke outline style ("Warm
+ * Relief" §5). Keys match the catalogue icon keys plus UI needs. All icons are
+ * decorative by default (aria-hidden); pass `label` for meaningful ones.
  */
 import type { JSX } from 'react';
 
@@ -113,7 +114,9 @@ const PATHS: Record<string, JSX.Element> = {
   check: <path d="M4 12.5 9.5 18 20 6" />,
   checks: <path d="M2 12.5 7.5 18 13 11M9 15l3.5 3L23 6" />,
   chevronRight: <path d="M9 5l7 7-7 7" />,
+  chevronLeft: <path d="M15 5l-7 7 7 7" />,
   chevronDown: <path d="M5 9l7 7 7-7" />,
+  arrowRight: <path d="M4 12h16M13 5l7 7-7 7" />,
   warning: <path d="M12 3 2 20h20L12 3zM12 9v5M12 17.5v.5" />,
   info: (
     <>
@@ -140,6 +143,19 @@ const PATHS: Record<string, JSX.Element> = {
     </>
   ),
   logout: <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M15 8l4 4-4 4M9 12h10" />,
+  lock: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </>
+  ),
+  menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  bell: (
+    <>
+      <path d="M6 16V11a6 6 0 0 1 12 0v5l2 3H4l2-3z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </>
+  ),
   chat: <path d="M4 5h16v11H9l-5 4V5z" />,
   eye: (
     <>
@@ -177,7 +193,7 @@ export function Icon({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden={label ? undefined : true}

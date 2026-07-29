@@ -18,13 +18,16 @@ import {
   BodyBold,
   Button,
   Card,
+  CategoryChip,
   ErrorView,
   Field,
   Gap,
   Heading,
+  ListRow,
   LoadingView,
   Muted,
   MutedCaption,
+  NeedPill,
   Row,
   StalenessNote,
 } from '../../src/components/ui';
@@ -231,25 +234,13 @@ export default function EventDetailScreen() {
         {(dashboard.data?.needs ?? []).map((n) => {
           const cat = categoryBySlug(catalogue.data?.categories, n.categorySlug);
           return (
-            <Card key={n.categoryId}>
-              <Row style={{ justifyContent: 'space-between' }}>
-                <BodyBold style={{ flex: 1 }}>
-                  {categoryGlyph(cat)} {categoryName(cat, locale)}
-                </BodyBold>
-                <Badge
-                  label={t(`shortage.${n.level}`)}
-                  tone={
-                    n.level === 'critical_shortage'
-                      ? 'danger'
-                      : n.level === 'high_need'
-                        ? 'warn'
-                        : n.level === 'adequate' || n.level === 'possible_surplus'
-                          ? 'success'
-                          : 'default'
-                  }
-                />
-              </Row>
-            </Card>
+            <ListRow
+              key={n.categoryId}
+              leading={<CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} />}
+              title={categoryName(cat, locale)}
+              trailing={<NeedPill level={n.level} label={t(`shortage.${n.level}`)} />}
+              chevron={false}
+            />
           );
         })}
         <StalenessNote updatedAt={dashboard.data?.generatedAt ?? dashboard.dataUpdatedAt} />
@@ -266,15 +257,14 @@ export default function EventDetailScreen() {
               const cat = categoryBySlug(catalogue.data?.categories, s.categorySlug);
               return (
                 <Card key={s.categoryId} tone={focus === 'bring' ? 'accent' : 'default'}>
-                  <Row style={{ justifyContent: 'space-between' }}>
-                    <BodyBold style={{ flex: 1 }}>
-                      {categoryGlyph(cat)} {categoryName(cat, locale)}
-                    </BodyBold>
-                    <Badge label={t(`shortage.${s.level}`)} tone={s.level === 'critical_shortage' ? 'danger' : 'warn'} />
+                  <Row gap={spacing.md}>
+                    <CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} />
+                    <BodyBold style={{ flex: 1 }}>{categoryName(cat, locale)}</BodyBold>
+                    <NeedPill level={s.level} label={t(`shortage.${s.level}`)} />
                   </Row>
-                  <Muted>
-                    {s.suggestedQty} {t(`units.${s.unit}`)}
-                  </Muted>
+                  <MutedCaption>
+                    {t('bring.needed', { count: `${s.suggestedQty} ${t(`units.${s.unit}`)}` })}
+                  </MutedCaption>
                   <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
                     <Button
                       title={t('bring.canBring')}

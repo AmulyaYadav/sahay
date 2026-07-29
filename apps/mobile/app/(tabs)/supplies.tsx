@@ -12,19 +12,21 @@ import { useLocale, useT } from '../../src/locale';
 import { categoryById, categoryGlyph, categoryName, groupCategories } from '../../src/catalogue';
 import { spacing, useTheme } from '../../src/theme';
 import {
+  AvailabilityBadge,
   Badge,
   Body,
   BodyBold,
   Button,
   Card,
+  CategoryChip,
   Chip,
   EmptyState,
   Field,
   Gap,
   Heading,
+  ListRow,
   Muted,
   MutedCaption,
-  PressableRow,
   Row,
   Stepper,
 } from '../../src/components/ui';
@@ -93,7 +95,12 @@ export default function SuppliesScreen() {
           }}
         />
       ) : (
-        <Button title={t('inventory.add')} onPress={() => setAdding(true)} />
+        <Button
+          title={`+ ${t('inventory.add')}`}
+          variant="secondary"
+          accessibilityLabel={t('inventory.add')}
+          onPress={() => setAdding(true)}
+        />
       )}
 
       {/* Offline-queued adds: never shown as live until the server says 2xx. */}
@@ -101,9 +108,10 @@ export default function SuppliesScreen() {
         const cat = categoryById(catalogue.data?.categories, op.body.categoryId);
         return (
           <Card key={op.id} tone="warn">
-            <Row style={{ justifyContent: 'space-between' }}>
+            <Row gap={spacing.md}>
+              <CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} />
               <BodyBold style={{ flex: 1 }}>
-                {categoryGlyph(cat)} {categoryName(cat, locale)} · {op.body.qty} {op.body.unit}
+                {categoryName(cat, locale)} · {op.body.qty} {op.body.unit}
               </BodyBold>
               <Badge label={t('sync.savedLocally')} tone="warn" />
             </Row>
@@ -183,27 +191,33 @@ function InventoryRow({
     ]);
   };
 
+  // Details caption, e.g. "4 bottle(s) · Sealed · Exp 2026-08-01"
+  const details = [
+    `${item.qtyAvailable} ${t(`units.${item.unit}`)}`,
+    item.details.sealed ? t('inventory.sealed') : null,
+    item.details.expiryDate ? `${t('inventory.expiry')}: ${item.details.expiryDate}` : null,
+    typeof item.details.chargePercent === 'number' ? `${item.details.chargePercent}%` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <Card>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <BodyBold style={{ flex: 1 }}>
-          {categoryGlyph(category)} {categoryName(category, locale)}
-        </BodyBold>
-        {!item.active ? <Badge label={t('inventory.disabled')} tone="warn" /> : null}
+      <Row gap={spacing.md} style={{ alignItems: 'flex-start' }}>
+        <CategoryChip glyph={categoryGlyph(category)} group={category?.group} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <BodyBold>{categoryName(category, locale)}</BodyBold>
+          <MutedCaption>{details}</MutedCaption>
+        </View>
+        {!item.active ? (
+          <Badge label={t('inventory.disabled')} tone="warn" />
+        ) : (
+          <AvailabilityBadge count={item.qtyAvailable} />
+        )}
       </Row>
-      <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-        <Badge label={`${item.qtyAvailable} ${t(`units.${item.unit}`)}`} tone="success" />
-        {item.qtyReserved > 0 ? (
-          <Badge label={t('inventory.reserved', { count: item.qtyReserved })} tone="accent" />
-        ) : null}
-        {item.details.sealed ? <Badge label={t('inventory.sealed')} /> : null}
-        {item.details.expiryDate ? (
-          <Badge label={`${t('inventory.expiry')}: ${item.details.expiryDate}`} />
-        ) : null}
-        {typeof item.details.chargePercent === 'number' ? (
-          <Badge label={`${item.details.chargePercent}%`} />
-        ) : null}
-      </Row>
+      {item.qtyReserved > 0 ? (
+        <Badge label={t('inventory.reserved', { count: item.qtyReserved })} tone="accent" />
+      ) : null}
       <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
         <Button
           title={`${t('inventory.replenish')} +1`}
@@ -311,93 +325,128 @@ function QuickAdd({
 
   if (!cat) {
     return (
-      <Card>
-        <Heading>{t('inventory.quickAdd')}</Heading>
+      <View style={{ gap: spacing.md }}>
+        <Heading>{t('inventory.add')}</Heading>
+        <Muted>{t('inventory.whatCarrying')}</Muted>
         {[...grouped.entries()].map(([group, list]) => (
           <View key={group} style={{ gap: spacing.sm }}>
             <MutedCaption>{t(`groups.${group}`)}</MutedCaption>
             {list.map((c) => (
-              <PressableRow
+              <ListRow
                 key={c.id}
                 accessibilityLabel={categoryName(c, locale)}
+                leading={<CategoryChip glyph={categoryGlyph(c)} group={c.group} />}
+                title={categoryName(c, locale)}
                 onPress={() => {
                   setCategoryId(c.id);
                   setUnit(c.unit);
                 }}
-                style={{ padding: spacing.md }}
-              >
-                <Body>
-                  {categoryGlyph(c)} {categoryName(c, locale)}
-                </Body>
-              </PressableRow>
+              />
             ))}
           </View>
         ))}
         <Button title={t('common.cancel')} variant="ghost" onPress={onDone} />
-      </Card>
+      </View>
     );
   }
 
   return (
-    <Card tone="accent">
-      <Heading>
-        {categoryGlyph(cat)} {categoryName(cat, locale)}
-      </Heading>
-      {cat.warningKey ? <Body color={th.colors.warn}>{t(cat.warningKey)}</Body> : null}
+    <View style={{ gap: spacing.md }}>
+      {/* Header with Save top-right (frame 05) */}
+      <Row style={{ justifyContent: 'space-between' }}>
+        <View style={{ flex: 1 }}>
+          <Heading>{t('inventory.add')}</Heading>
+          <Muted>{t('inventory.whatCarrying')}</Muted>
+        </View>
+        <Button
+          title={t('common.save')}
+          small
+          onPress={() => void submit()}
+          loading={busy}
+          disabled={cat.sealedRequired && !sealed}
+        />
+      </Row>
 
-      <Muted>{t('inventory.qty')}</Muted>
-      <Stepper
-        value={qty}
-        onChange={setQty}
-        min={1}
-        max={cat.maxOfferQty}
-        unitLabel={t(`units.${unit ?? cat.unit}`)}
-      />
-
-      {cat.altUnits.length > 0 ? (
-        <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-          {[cat.unit, ...cat.altUnits].map((u) => (
-            <Chip
-              key={u}
-              label={t(`units.${u}`)}
-              selected={(unit ?? cat.unit) === u}
-              onPress={() => setUnit(u)}
-            />
-          ))}
-        </Row>
-      ) : null}
-
-      {cat.sealedRequired ? (
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Body>{t('inventory.sealed')}</Body>
-          <Switch
-            accessibilityLabel={t('inventory.sealed')}
-            value={sealed}
-            onValueChange={setSealed}
-            trackColor={{ true: th.colors.accent, false: th.colors.border }}
+      {/* Category field card */}
+      <Card>
+        <MutedCaption>{t('inventory.category')}</MutedCaption>
+        <Row gap={spacing.md}>
+          <CategoryChip glyph={categoryGlyph(cat)} group={cat.group} />
+          <BodyBold style={{ flex: 1 }}>{categoryName(cat, locale)}</BodyBold>
+          <Button
+            title={t('common.edit')}
+            variant="ghost"
+            small
+            onPress={() => setCategoryId(null)}
           />
         </Row>
+        {cat.warningKey ? <Body color={th.colors.warning}>{t(cat.warningKey)}</Body> : null}
+      </Card>
+
+      {/* Quantity + unit field card */}
+      <Card>
+        <MutedCaption>{t('inventory.qty')}</MutedCaption>
+        <Stepper
+          value={qty}
+          onChange={setQty}
+          min={1}
+          max={cat.maxOfferQty}
+          unitLabel={t(`units.${unit ?? cat.unit}`)}
+        />
+        {cat.altUnits.length > 0 ? (
+          <>
+            <MutedCaption>{t('inventory.unit')}</MutedCaption>
+            <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
+              {[cat.unit, ...cat.altUnits].map((u) => (
+                <Chip
+                  key={u}
+                  label={t(`units.${u}`)}
+                  selected={(unit ?? cat.unit) === u}
+                  onPress={() => setUnit(u)}
+                />
+              ))}
+            </Row>
+          </>
+        ) : null}
+      </Card>
+
+      {/* Condition / expiry / charge field cards */}
+      {cat.sealedRequired ? (
+        <Card>
+          <MutedCaption>{t('inventory.condition')}</MutedCaption>
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Body>{t('inventory.sealed')}</Body>
+            <Switch
+              accessibilityLabel={t('inventory.sealed')}
+              value={sealed}
+              onValueChange={setSealed}
+              trackColor={{ true: th.colors.primary, false: th.colors.border }}
+            />
+          </Row>
+          {!sealed ? <MutedCaption>{t('safety.inspectSealed')}</MutedCaption> : null}
+        </Card>
       ) : null}
 
       {cat.expiryRelevant ? (
-        <Field
-          label={t('inventory.expiry')}
-          placeholder="YYYY-MM-DD"
-          value={expiry}
-          onChangeText={setExpiry}
-          autoCapitalize="none"
-        />
+        <Card>
+          <Field
+            label={t('inventory.expiry')}
+            placeholder="YYYY-MM-DD"
+            value={expiry}
+            onChangeText={setExpiry}
+            autoCapitalize="none"
+          />
+        </Card>
       ) : null}
 
       {cat.slug === 'power-bank' ? (
-        <>
-          <Muted>{t('inventory.chargePercent')}</Muted>
+        <Card>
+          <MutedCaption>{t('inventory.chargePercent')}</MutedCaption>
           <Stepper value={charge} onChange={setCharge} min={0} max={100} step={10} unitLabel="%" />
-        </>
+        </Card>
       ) : null}
 
-      {notice ? <Body color={th.colors.danger}>{notice}</Body> : null}
-      {cat.sealedRequired && !sealed ? <MutedCaption>{t('safety.inspectSealed')}</MutedCaption> : null}
+      {notice ? <Body color={th.colors.error}>{notice}</Body> : null}
 
       <Row gap={spacing.sm}>
         <Button
@@ -409,6 +458,6 @@ function QuickAdd({
         />
         <Button title={t('common.back')} variant="ghost" onPress={() => setCategoryId(null)} />
       </Row>
-    </Card>
+    </View>
   );
 }

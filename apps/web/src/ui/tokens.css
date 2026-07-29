@@ -1,74 +1,201 @@
-/* Sahay design tokens — calm, humane, non-partisan. */
+/*
+ * Sahay design tokens — "Warm Relief" (docs/design-system.md §1–3).
+ * Friendly, calm, humanitarian: rounded cards on a soft gray canvas, pastel
+ * category tints, pill badges, one confident blue.
+ */
 :root {
-  /* Color: soft neutrals + one warm blue accent. */
-  --c-accent: #4a6fa5;
-  --c-accent-strong: #3a5a89;
-  --c-accent-soft: #e8eef6;
-  --c-bg: #f7f6f3;
+  /* ------------------------------------------------------------- palette */
+  --c-primary: #2563eb;
+  --c-primary-strong: #1d4ed8;
+  --c-primary-tint: #eff4ff;
+  --c-primary-border: #bfd3f8; /* secondary-button border */
+
+  --c-success: #16a34a;
+  /* Solid green surfaces that carry white 14px text (green CTA, my chat
+   * bubbles) use the -strong shade so white text meets AA 4.5:1. */
+  --c-success-strong: #15803d;
+  --c-success-stronger: #166534;
+  --c-success-tint: #e8f7ee;
+  --c-success-text: #15803d; /* AA on success-tint at 12px */
+
+  --c-warning: #d97706;
+  --c-warning-tint: #fef3e2;
+  --c-warning-text: #b45309; /* AA on warning-tint at 12px */
+
+  --c-error: #dc2626;
+  --c-error-strong: #b91c1c; /* destructive button bg — white text AA */
+  --c-error-tint: #fdecec;
+  --c-error-text: #b91c1c; /* AA on error-tint at 12px */
+  --c-highneed-text: #c2410c; /* "high need" pill text on error-tint */
+
+  --c-canvas: #f6f7f9;
   --c-surface: #ffffff;
-  --c-surface-2: #efede8;
-  --c-border: #ddd9d1;
-  --c-text: #2b2a27;
-  --c-text-soft: #6a675f;
-  --c-danger: #a04a4a;
-  --c-danger-soft: #f6e8e8;
-  --c-ok: #4a7a56;
-  --c-ok-soft: #e8f2ea;
-  --c-warn: #8a6d3b;
-  --c-warn-soft: #f6efe0;
-  --c-focus: #2f5586;
+  --c-border: #e5e9f0;
+  --c-text: #101828;
+  --c-text-secondary: #667085;
+  --c-text-secondary-strong: #475467; /* neutral pill text — AA on gray tint */
+  --c-on-color: #ffffff;
+  --c-neutral-tint: #eef1f5;
 
-  /* Spacing scale */
-  --sp-1: 0.25rem;
-  --sp-2: 0.5rem;
-  --sp-3: 0.75rem;
-  --sp-4: 1rem;
-  --sp-5: 1.5rem;
-  --sp-6: 2rem;
-  --sp-7: 3rem;
+  --c-focus: #93b4f4;
+  --c-backdrop: rgb(16 24 40 / 48%);
 
-  /* Type scale (rem — respects user font size) */
-  --fs-xs: 0.75rem;
-  --fs-sm: 0.875rem;
-  --fs-md: 1rem;
-  --fs-lg: 1.125rem;
-  --fs-xl: 1.375rem;
-  --fs-2xl: 1.75rem;
-  --fs-3xl: 2.25rem;
+  /* Solid button fills stay identical across themes: they always carry
+   * white text, so they must keep AA against it (not against the canvas). */
+  --c-btn-primary: #2563eb;
+  --c-btn-primary-hover: #1d4ed8;
 
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /* Category-group tints (icon squares): bg + icon color per group. */
+  --cat-hydration-bg: #e3f1fd;
+  --cat-hydration-fg: #1d9bf0;
+  --cat-food-bg: #fef3e2;
+  --cat-food-fg: #d97706;
+  --cat-shelter-bg: #efe9fe;
+  --cat-shelter-fg: #7c5ce0;
+  --cat-hygiene-bg: #fde8f0;
+  --cat-hygiene-fg: #db2777;
+  --cat-power-bg: #fef9c3;
+  --cat-power-fg: #ca8a04;
+  --cat-clothing-bg: #e8f7ee;
+  --cat-clothing-fg: #16a34a;
+  --cat-first_aid-bg: #fdecec;
+  --cat-first_aid-fg: #dc2626;
+  --cat-misc-bg: #eef1f5;
+  --cat-misc-fg: #667085;
+
+  /* --------------------------------------- legacy aliases (old CSS/JSX) */
+  --c-accent: var(--c-primary);
+  --c-accent-strong: var(--c-primary-strong);
+  --c-accent-soft: var(--c-primary-tint);
+  --c-bg: var(--c-canvas);
+  --c-surface-2: var(--c-neutral-tint);
+  --c-text-soft: var(--c-text-secondary);
+  --c-danger: var(--c-error);
+  --c-danger-soft: var(--c-error-tint);
+  --c-ok: var(--c-success-text);
+  --c-ok-soft: var(--c-success-tint);
+  --c-warn: var(--c-warning-text);
+  --c-warn-soft: var(--c-warning-tint);
+
+  /* ------------------------------------------------------------- spacing */
+  /* 4-pt grid */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+
+  /* ---------------------------------------------------------------- type */
+  --font-sans:
+    'Inter Variable',
+    Inter,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Noto Sans',
+    'Noto Sans Devanagari',
+    sans-serif;
+  /* 28/36·700  20/28·600  16/24·600  14/20·400/500  12/16·500 */
+  --fs-h1: 28px;
+  --lh-h1: 36px;
+  --fs-h2: 20px;
+  --lh-h2: 28px;
+  --fs-h3: 16px;
+  --lh-h3: 24px;
+  --fs-body: 14px;
+  --lh-body: 20px;
+  --fs-caption: 12px;
+  --lh-caption: 16px;
+  --fs-stat: 24px; /* numbers that matter: 24–32/700 tabular */
+  --fs-hero: 44px; /* landing hero H1 only */
+  --lh-hero: 1.15;
+
+  /* legacy type aliases */
+  --fs-xs: var(--fs-caption);
+  --fs-sm: var(--fs-body);
+  --fs-md: var(--fs-body);
+  --fs-lg: var(--fs-h3);
+  --fs-xl: var(--fs-h2);
+  --fs-2xl: var(--fs-h1);
+  --fs-3xl: 32px;
+
+  /* --------------------------------------------------------------- shape */
+  --radius-sm: 12px; /* inputs, buttons, chips */
+  --radius-md: 16px; /* cards, list rows */
+  --radius-lg: 20px; /* large cards, sheets */
+  --radius-xl: 24px; /* hero cards, modals */
   --radius-full: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(43, 42, 39, 0.08);
-  --shadow-md: 0 4px 14px rgba(43, 42, 39, 0.12);
-  --shadow-lg: 0 12px 32px rgba(43, 42, 39, 0.18);
+  /* ----------------------------------------------------------- elevation */
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 4%);
+  --shadow-md: 0 4px 12px rgb(16 24 40 / 8%);
+  --shadow-lg: 0 8px 24px rgb(16 24 40 / 12%);
 
   --touch: 44px;
+  --btn-h: 48px; /* primary */
+  --btn-h-sm: 40px; /* secondary/inline */
   --maxw: 1024px;
+  /* Shared horizontal gutter for the full-bleed header and landing page. */
+  --page-gutter: clamp(16px, 6vw, 96px);
+  --appcol: 640px; /* centered participant column */
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --c-accent: #7d9ecb;
-    --c-accent-strong: #9db8dc;
-    --c-accent-soft: #263548;
-    --c-bg: #191a1c;
-    --c-surface: #232426;
-    --c-surface-2: #2c2d30;
-    --c-border: #3c3d41;
-    --c-text: #e8e6e1;
-    --c-text-soft: #a5a29a;
-    --c-danger: #cf8686;
-    --c-danger-soft: #3c2a2a;
-    --c-ok: #8ab894;
-    --c-ok-soft: #26362a;
-    --c-warn: #cbb083;
-    --c-warn-soft: #3a3226;
-    --c-focus: #9db8dc;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --c-primary: #6392f0;
+    --c-primary-strong: #85aaf3;
+    --c-primary-tint: rgb(96 165 250 / 15%);
+    --c-primary-border: rgb(96 165 250 / 45%);
+
+    --c-success: #4ade80;
+    --c-success-strong: #15803d;
+    --c-success-stronger: #166534;
+    --c-success-tint: rgb(74 222 128 / 13%);
+    --c-success-text: #6ee7a0;
+
+    --c-warning: #fbbf24;
+    --c-warning-tint: rgb(251 191 36 / 13%);
+    --c-warning-text: #fcd34d;
+
+    --c-error: #f87171;
+    --c-error-strong: #b91c1c;
+    --c-error-tint: rgb(248 113 113 / 13%);
+    --c-error-text: #fca5a5;
+    --c-highneed-text: #fdba74;
+
+    --c-canvas: #101828;
+    --c-surface: #1b2432;
+    --c-border: #2a3446;
+    --c-text: #f2f4f7;
+    --c-text-secondary: #98a2b3;
+    --c-text-secondary-strong: #c3cbd8;
+    --c-neutral-tint: rgb(152 162 179 / 14%);
+
+    --c-focus: #93b4f4;
+    --c-backdrop: rgb(2 6 16 / 64%);
+
+    --cat-hydration-bg: rgb(29 155 240 / 15%);
+    --cat-hydration-fg: #57b8f5;
+    --cat-food-bg: rgb(217 119 6 / 15%);
+    --cat-food-fg: #f0a244;
+    --cat-shelter-bg: rgb(124 92 224 / 16%);
+    --cat-shelter-fg: #a68df0;
+    --cat-hygiene-bg: rgb(219 39 119 / 15%);
+    --cat-hygiene-fg: #ef6cab;
+    --cat-power-bg: rgb(202 138 4 / 15%);
+    --cat-power-fg: #e3b93c;
+    --cat-clothing-bg: rgb(22 163 74 / 15%);
+    --cat-clothing-fg: #4ade80;
+    --cat-first_aid-bg: rgb(220 38 38 / 15%);
+    --cat-first_aid-fg: #f87171;
+    --cat-misc-bg: rgb(152 162 179 / 14%);
+    --cat-misc-fg: #98a2b3;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 4px 12px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 8px 24px rgb(0 0 0 / 50%);
   }
 }

@@ -1,28 +1,31 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, View } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { RequestView } from '@sahay/shared';
 import { api } from '../../src/api';
 import { useAuth } from '../../src/auth';
-import { qk, useCatalogue, useRequest } from '../../src/hooks';
+import { qk, useCatalogue, useMatch, useRequest } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
 import { categoryBySlug, categoryGlyph, categoryName } from '../../src/catalogue';
 import { minutesUntil } from '../../src/format';
 import { spacing, useTheme } from '../../src/theme';
+import { LanternVignette } from '../../src/components/vignettes';
 import {
   Badge,
   Body,
   BodyBold,
   Button,
   Card,
+  CategoryChip,
   ErrorView,
   Gap,
-  Heading,
   LoadingView,
   Muted,
   MutedCaption,
+  NeedPill,
   Row,
+  Title,
 } from '../../src/components/ui';
 
 /** Live matching screen: state comes from the server only — no fake progress. */
@@ -38,6 +41,10 @@ export default function RequestScreen() {
 
   const request = useRequest(id, { poll: true });
   const [busy, setBusy] = useState(false);
+
+  const matchedId =
+    request.data?.status === 'matched' ? request.data.activeMatchId : null;
+  const match = useMatch(matchedId ?? undefined);
 
   if (request.isLoading) return <LoadingView />;
   if (request.isError || !request.data)
@@ -68,38 +75,58 @@ export default function RequestScreen() {
           title: searching
             ? t('sync.matching')
             : r.status === 'matched'
-              ? t('match.matched')
+              ? t('match.found')
               : t('request.title'),
         }}
       />
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        <Card>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Heading style={{ flex: 1 }}>
-              {categoryGlyph(cat)} {categoryName(cat, locale)}
-            </Heading>
-            <Badge label={`${r.qty} ${t(`units.${r.unit}`)}`} tone="accent" />
-          </Row>
-          <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-            <Badge
-              label={
-                r.urgency === 'urgent'
-                  ? t('request.urgent')
-                  : r.urgency === 'soon'
-                    ? t('request.soon')
-                    : t('request.std')
-              }
-              tone={r.urgency === 'urgent' ? 'danger' : 'default'}
+        {/* Match found moment (§4.10) */}
+        {r.status === 'matched' && r.activeMatchId ? (
+          <View style={{ gap: spacing.lg, paddingVertical: spacing.lg }}>
+            <LanternVignette />
+            <Title center>{t('match.found')}</Title>
+            {match.data ? (
+              <>
+                <Body center>{t('match.canHelp', { alias: match.data.peer.alias })}</Body>
+                <Muted center>
+                  {match.data.qtyReserved} {t(`units.${match.data.unit}`)} ·{' '}
+                  {t(`proximity.${match.data.proximity}`)}
+                </Muted>
+              </>
+            ) : null}
+            <Button
+              title={t('match.startChat')}
+              onPress={() => router.push(`/match/${r.activeMatchId}`)}
             />
-            {r.qtyFulfilled > 0 ? <Badge label={`${r.qtyFulfilled}/${r.qty}`} tone="success" /> : null}
-          </Row>
-          {r.note ? <Muted>{r.note}</Muted> : null}
-        </Card>
+          </View>
+        ) : (
+          <Card>
+            <Row gap={spacing.md}>
+              <CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} />
+              <BodyBold style={{ flex: 1 }}>{categoryName(cat, locale)}</BodyBold>
+              <Badge label={`${r.qty} ${t(`units.${r.unit}`)}`} tone="accent" />
+            </Row>
+            <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
+              <NeedPill
+                level={r.urgency === 'urgent' ? 'critical_shortage' : r.urgency === 'soon' ? 'moderate_need' : 'adequate'}
+                label={
+                  r.urgency === 'urgent'
+                    ? t('request.urgent')
+                    : r.urgency === 'soon'
+                      ? t('request.soon')
+                      : t('request.std')
+                }
+              />
+              {r.qtyFulfilled > 0 ? <Badge label={`${r.qtyFulfilled}/${r.qty}`} tone="success" /> : null}
+            </Row>
+            {r.note ? <Muted>{r.note}</Muted> : null}
+          </Card>
+        )}
 
         {searching ? (
           <Card tone="accent">
             <Row gap={spacing.md}>
-              <ActivityIndicator color={th.colors.accent} />
+              <ActivityIndicator color={th.colors.primary} />
               <BodyBold style={{ flex: 1 }}>{t('request.searching')}</BodyBold>
             </Row>
             <Muted>{t('request.attempt', { count: r.attemptCount })}</Muted>
@@ -108,19 +135,9 @@ export default function RequestScreen() {
             </MutedCaption>
             <Button
               title={t('request.cancelReq')}
-              variant="danger"
+              variant="dangerSoft"
               loading={busy}
               onPress={() => void act('/cancel')}
-            />
-          </Card>
-        ) : null}
-
-        {r.status === 'matched' && r.activeMatchId ? (
-          <Card tone="accent">
-            <BodyBold>{t('match.matched')}</BodyBold>
-            <Button
-              title={t('match.matched')}
-              onPress={() => router.push(`/match/${r.activeMatchId}`)}
             />
           </Card>
         ) : null}
@@ -161,8 +178,8 @@ export default function RequestScreen() {
         ) : null}
 
         {r.status === 'fulfilled' ? (
-          <Card tone="accent">
-            <BodyBold>{t('request.fulfilled')}</BodyBold>
+          <Card tone="success">
+            <BodyBold color={th.colors.success}>{t('request.fulfilled')}</BodyBold>
           </Card>
         ) : null}
 

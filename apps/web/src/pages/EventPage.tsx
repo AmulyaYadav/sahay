@@ -42,19 +42,14 @@ export function EventPage() {
           {event.status === 'scheduled' ? <Badge tone="accent">{t('events.scheduled')}</Badge> : null}
           {['completed', 'archived', 'disabled'].includes(event.status) ? <Badge>{t('events.ended')}</Badge> : null}
         </div>
-        <div className="row-wrap text-sm text-soft">
-          <span>
-            <Icon name="calendar" size={16} /> {t(`eventTypes.${event.type}`)}
-          </span>
-          <span>
+        <div className="stack-sm">
+          <p className="helping-meta">
+            <Icon name="calendar" size={16} /> {t(`eventTypes.${event.type}`)} · {t('eventPage.starts')}:{' '}
+            {formatDateTime(event.startsAt, locale)} · {t('eventPage.ends')}: {formatDateTime(event.endsAt, locale)}
+          </p>
+          <p className="helping-meta">
             <Icon name="location" size={16} /> {event.areaLabel}
-          </span>
-          <span>
-            {t('eventPage.starts')}: {formatDateTime(event.startsAt, locale)}
-          </span>
-          <span>
-            {t('eventPage.ends')}: {formatDateTime(event.endsAt, locale)}
-          </span>
+          </p>
         </div>
       </div>
 

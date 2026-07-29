@@ -8,6 +8,7 @@ import { useEventSearch } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
 import { formatDateTime } from '../../src/format';
 import { spacing, useTheme } from '../../src/theme';
+import { BalloonsVignette } from '../../src/components/vignettes';
 import {
   Badge,
   Body,
@@ -16,8 +17,8 @@ import {
   Card,
   EmptyState,
   Field,
+  Heading,
   LoadingView,
-  Muted,
   MutedCaption,
   PressableRow,
   Row,
@@ -64,13 +65,10 @@ export default function EventsScreen() {
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
       ListHeaderComponent={
         <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
-          <Field
-            label={t('events.discover')}
-            placeholder={t('events.searchPlaceholder')}
-            value={q}
-            onChangeText={setQ}
-            autoCapitalize="none"
-          />
+          <BalloonsVignette size={128} />
+          <Heading center>{t('events.discover')}</Heading>
+
+          {/* Enter event code (frame 02) */}
           <Card>
             <BodyBold>{t('events.joinByCode')}</BodyBold>
             <Row gap={spacing.sm}>
@@ -91,13 +89,32 @@ export default function EventsScreen() {
                 disabled={!code.trim()}
               />
             </Row>
-            {codeError ? <Body color={th.colors.danger}>{codeError}</Body> : null}
+            {codeError ? <Body color={th.colors.error}>{codeError}</Body> : null}
           </Card>
+
+          {/* — or — */}
+          <Row gap={spacing.md}>
+            <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
+            <MutedCaption>{t('common.or')}</MutedCaption>
+            <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
+          </Row>
+
+          <Field
+            label={t('events.discover')}
+            placeholder={t('events.searchPlaceholder')}
+            value={q}
+            onChangeText={setQ}
+            autoCapitalize="none"
+          />
           <MutedCaption>{t('events.participantsHidden')}</MutedCaption>
         </View>
       }
       ListEmptyComponent={
-        search.isLoading ? <LoadingView /> : <EmptyState message={t('events.noResults')} />
+        search.isLoading ? (
+          <LoadingView />
+        ) : (
+          <EmptyState message={t('events.noResults')} variant="search" />
+        )
       }
       renderItem={({ item }) => (
         <PressableRow
@@ -110,7 +127,7 @@ export default function EventsScreen() {
             </BodyBold>
             {item.joined ? <Badge label={t('events.joined')} tone="success" /> : null}
           </Row>
-          <Muted>{item.areaLabel}</Muted>
+          <MutedCaption>{item.areaLabel}</MutedCaption>
           <MutedCaption>
             {t(`eventTypes.${item.type}`)} · {formatDateTime(item.startsAt, locale)} –{' '}
             {formatDateTime(item.endsAt, locale)}
