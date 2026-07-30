@@ -1,0 +1,21 @@
+// Cloudflare Workers config for the public web app.
+//
+// Cloudflare retired the Pages creation flow, so the SPA is served as a
+// static-only Worker: no `main` script, just an assets directory. The bundle is
+// produced by `npm run build:pages -w apps/web`, which also writes
+// apps/web/dist/_headers — Workers parses that for the security headers and the
+// CSP naming the API origin (see apps/web/scripts/write-pages-config.mjs).
+//
+// SPA routing is handled by not_found_handling below rather than a _redirects
+// catch-all: an unmatched path returns index.html with 200, so reloading
+// /admin or /events/<code> works instead of 404ing.
+{
+  "name": "sahay",
+  // Pinned in the past on purpose: a date newer than the deployed runtime
+  // binary is rejected ("requires compatibility date X, newest supported is Y").
+  "compatibility_date": "2026-07-01",
+  "assets": {
+    "directory": "./apps/web/dist",
+    "not_found_handling": "single-page-application"
+  }
+}
