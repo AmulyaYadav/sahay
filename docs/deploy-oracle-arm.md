@@ -40,18 +40,58 @@ JavaScript, and it cross-builds and runs clean on arm64.
 
 ## 2. Create the instance
 
-1. Sign up at cloud.oracle.com. A credit card is required for identity even on
-   the free tier. **Pick your home region carefully — it cannot be changed**, and
-   free capacity varies by region. Mumbai and Hyderabad both exist.
-2. Compute → Create Instance:
-   - Shape: **VM.Standard.A1.Flex**, 2 OCPU / 12 GB (stay inside the free
-     allowance or you will be billed)
-   - Image: Ubuntu 22.04 or 24.04 (**aarch64** build)
-   - Add your SSH public key
-   - Boot volume 50–100 GB (200 GB is the free ceiling across all volumes)
-3. If you get **"Out of capacity for shape VM.Standard.A1.Flex"** — common, and
-   not a mistake on your part — retry periodically or try another availability
-   domain. This is the single most likely thing to block you.
+### Sign up
+
+cloud.oracle.com/free. A credit card is required for identity verification —
+expect a small temporary hold, refunded; Always Free resources are not charged.
+
+**Your home region is permanent.** For an India-facing app that means
+**Mumbai (ap-mumbai-1)** or **Hyderabad (ap-hyderabad-1)**. Mumbai has better
+peering for most Indian users; Hyderabad is less contended, so free ARM capacity
+is often easier to get. This is a genuine trade-off and it cannot be undone
+later, so decide before you click.
+
+### Create
+
+Menu (☰) → **Compute → Instances → Create instance**. The defaults are wrong for
+us in three places, all easy to miss:
+
+| Field | Set it to | Why it matters |
+|---|---|---|
+| Name | `sahay` | — |
+| **Image** | Change image → Canonical Ubuntu → **24.04**, and pick the build whose name ends **`aarch64`** | The x86 image will not boot on an Ampere shape |
+| **Shape** | Change shape → **Ampere** → `VM.Standard.A1.Flex` → **2 OCPU, 12 GB** | The default is an AMD micro shape at 1/8 OCPU, which is far too slow. Do not exceed 2/12 or you leave the free allowance and get billed |
+| **Public IPv4 address** | **Assign** | Without it the box has no inbound route at all and nothing else in this guide works |
+| SSH keys | Paste your `~/.ssh/id_ed25519.pub` | Generate with `ssh-keygen -t ed25519` if you have none |
+| Boot volume | Default (~47 GB) is fine; up to ~100 GB | The free ceiling is 200 GB across all block volumes |
+
+Then **Create**, and wait for the state to go from PROVISIONING to **RUNNING**.
+
+### "Out of host capacity"
+
+Expect this on free Ampere — it is the single most common blocker and it is not a
+mistake on your part. Options, in order:
+
+1. Retry. Capacity is released continuously; a retry an hour later often works.
+2. Try a different **availability domain** (AD-1 / AD-2 / AD-3) in the
+   Placement section, if your region has more than one.
+3. Reduce to 1 OCPU / 6 GB — smaller requests are filled sooner, and it is still
+   ample for this stack (measured idle footprint ~360 MB).
+4. Upgrade the account to **Pay As You Go**. Always Free resources stay free
+   after upgrading (Oracle's own documentation says so) and PAYG accounts are
+   not subject to the free-tier capacity squeeze. The catch is real, though:
+   nothing then stops you from accidentally provisioning something billable, so
+   set a budget alert if you do this.
+
+### Connect
+
+```bash
+ssh ubuntu@<public-ip>
+```
+
+The user is `ubuntu` on Canonical images (`opc` on Oracle Linux). If it hangs
+rather than refusing, that is the firewall in the next section, not SSH — port
+22 is open by default but 80 and 443 are not.
 
 ## 3. Open the firewall — both layers
 
