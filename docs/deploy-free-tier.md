@@ -134,9 +134,15 @@ Create a Pages project from this repo:
 
 | Setting | Value |
 |---|---|
+| Framework preset | None |
 | Build command | `npm run build -w packages/shared && npm run build:pages -w apps/web` |
 | Output directory | `apps/web/dist` |
+| Root directory | `/` (leave as the repo root — this is a workspace build) |
 | Env var | `VITE_API_URL=https://<northflank-api-domain>` |
+
+`.nvmrc` pins Node 22, matching `server/Dockerfile`, so the builder does not fall
+back to whatever default it ships with. If Pages ignores it, set `NODE_VERSION=22`
+as a build environment variable too.
 
 `VITE_API_URL` is compiled into the bundle *and* into the CSP, so it must be set
 before the first build. `build:pages` generates `dist/_headers` (security headers
