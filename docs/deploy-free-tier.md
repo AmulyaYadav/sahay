@@ -64,69 +64,73 @@ regardless.
 
 ## 3. API + worker + Redis — Northflank
 
-Create a project, then inside it:
+Free sandbox allowance: **2 services, 1 database, 2 cron jobs**. That maps onto
+this app exactly — api and worker as the two services, Redis as the database,
+migrations as a job — so there is no room to spare. Two *combined* services
+(build + deploy) rather than a build service feeding two deployments, because the
+latter would be three services.
 
-**Redis addon:** Addons → Redis → smallest plan. Copy its internal connection
-URI — that is `REDIS_URL`.
+### 3a. Redis addon
 
-**API service:** Create Service → Combined (build + deploy) → connect this repo.
+Addons → Redis → smallest plan. Do not copy the credentials anywhere yet.
+
+### 3b. Secret group — do this before the services
+
+Project → **Secrets** → create a group. Both services and the migration job
+inherit it, so every variable is entered once instead of three times.
+
+Import [`ops/northflank-secrets.env.example`](../ops/northflank-secrets.env.example)
+with the placeholders filled in — the group accepts a `.env` upload. Keep your
+filled copy out of the repo and delete it afterwards.
+
+Then **link the Redis addon to this group**: expand the addons list, choose
+*configure*, take the *suggested* variables, and **alias** the connection
+variable to `REDIS_URL`. Northflank names them `NF_<ADDON>_<DETAIL>` by default,
+which the app does not read. Aliasing means the credential is injected rather
+than pasted, and it follows the addon if it is ever recreated.
+
+If the addon exposes only host/port/password and no single URI, set `REDIS_URL`
+manually to `redis://:<password>@<host>:<port>`.
+
+### 3c. API service
+
+Create new → **Combined service** (build + deploy) → this repository.
 
 | Setting | Value |
 |---|---|
 | Build type | Dockerfile |
-| Dockerfile path | `server/Dockerfile` |
-| Build context | `/` (repo root — the Dockerfile copies workspace manifests) |
+| Dockerfile path | `/server/Dockerfile` |
+| Build context | `/` — the repo root, since the Dockerfile copies workspace manifests |
 | Port | `4000`, HTTP, **public** |
 | Health check | `GET /healthz` |
+| Secret group | inherit the group from 3b |
 
-Environment variables:
+Note the build context: pointing it at `/server` breaks the build, because the
+Dockerfile reaches up for `package.json`, `package-lock.json` and
+`packages/shared`.
 
-```
-NODE_ENV=production
-PORT=4000
-HOST=0.0.0.0
-DATABASE_URL=<Supabase pooler URI>
-DATABASE_SSL=require
-DATABASE_POOL_MAX=8
-REDIS_URL=<Northflank Redis internal URI>
-PII_ENCRYPTION_KEY=<from step 0>
-IDENTITY_HMAC_KEY=<from step 0>
-EMAIL_PROVIDER=resend
-RESEND_API_KEY=<from step 2>
-RESEND_FROM=onboarding@resend.dev
-SCRYPT_COST_LOG2=15
-WEB_ORIGIN=https://<your-pages-domain>   # fill in after step 4, then redeploy
-```
+### 3d. Worker service
 
-Two of those need explaining:
+Same repository, same Dockerfile, same secret group. Differences:
 
-- `DATABASE_POOL_MAX=8` — the default is 20 *per process*, and api + worker
-  would be 40 against a free tier that caps connections.
-- `SCRYPT_COST_LOG2=15` — halves the time per password check (~125ms vs
-  ~250ms). Hashing is synchronous, so each one stalls the event loop and delays
-  every other request; on a small shared-CPU instance that is worth trading a
-  bit of cost factor for. It is not a memory measure — one hash runs at a time
-  per process. Stored hashes record their own cost, so this never invalidates an
-  existing password and you can raise it later.
+- **no port**, **no health check** — it serves nothing
+- command override: `node dist/worker-main.js`
 
-**Worker service:** same repo, same Dockerfile, same environment variables, but
-no port and no health check. Override the command:
+Cloning the API service in the UI carries the settings over.
 
-```
-node dist/worker-main.js
-```
+### 3e. Migrations as a job
 
-Northflank can clone the API service to save re-entering all of that.
-
-**Migrations.** Migrations are never applied at startup, by design. Run them as
-a one-off job with the same image and environment:
+Migrations are never applied at startup, by design. Create a **Job** on the same
+repo and Dockerfile, inheriting the same secret group, with the command:
 
 ```
 node dist/db/migrate.js
 ```
 
-Run this *before* the services start, and again after any deploy that adds a
-migration. It is idempotent — it prints `up to date` when there is nothing to do.
+Run it **before** the services first start, and again after any deploy that adds
+a migration. It is idempotent — it prints `up to date` when there is nothing to
+do. The same job pattern, with the command swapped, covers the two one-off tasks
+in step 5 (`seed.js` and `bootstrap-admin.js`).
 
 ## 4. Web — Cloudflare Pages
 
