@@ -125,12 +125,34 @@ So each free option is defective in a different way, and they are not the same
 kind of defect: DuckDNS is clean on certificates but unreachable for your
 audience; sslip.io is reachable but its certificates depend on strangers.
 
-**Recommendation: buy the domain.** At Cloudflare's at-cost pricing this is
-~$0.87/month for `.com` and less for `.in` — the only line item in this whole
-deployment — and it removes all three problems at once: it resolves everywhere,
-it is its own registrable domain for rate limits, there is no 30-day renewal
-chore, and you can put Cloudflare's free DNS and proxy in front of it. If the
-prototype is worth an Oracle account and an evening of setup, it is worth that.
+**Recommendation: buy the domain.** It is the only line item in this whole
+deployment, and it removes every problem above at once: resolves everywhere, its
+own registrable domain for rate limits, no 30-day renewal chore, and it works
+behind Cloudflare's free DNS and proxy.
+
+Buy **`.in`** — $7.83/yr at Porkbun (~₹690, about $0.65/month), flat, no
+promotional first year and no renewal jump. It is the cheapest TLD that stays
+cheap, and it is the national TLD for the people this app is for. `.in` is open
+to anyone; no local-presence requirement.
+
+Ignore the sub-$2 TLDs. Their first year is bait: at Porkbun (July 2026) `.site`
+and `.online` are $1.96 to register and **$28.84** to renew, `.store` $2.57 then
+**$43.77**, `.shop` $2.06 then **$31.41**. Anything you keep past a year costs
+more than `.com`. `.xyz` is the least bad of them at $2.04 then $12.98.
+
+There is a second reason to avoid the bargain-bin TLDs here, and it is the same
+lesson as DuckDNS: `.xyz`, `.site`, `.top` and friends carry poor reputation with
+spam filters and corporate/ISP blocklists because of how heavily they are abused.
+A hostname that resolves but gets filtered fails exactly like one that does not
+resolve at all, and it matters more than usual for an app people are supposed to
+reach during an emergency. `.in`, `.com` and `.org` are clean.
+
+Registrar: **Porkbun** or **Cloudflare** — both sell at or near cost with free
+WHOIS privacy, and neither runs a renewal trap (Cloudflare `.com` $10.46,
+Porkbun `.com` $11.08; Cloudflare's TLD selection is narrower, so check `.in` is
+offered before assuming). Avoid registrars advertising a cheap first year and
+quietly doubling at renewal. Indian registrars add 18% GST, which usually makes
+a US registrar cheaper net.
 
 ### If you use DuckDNS anyway
 
