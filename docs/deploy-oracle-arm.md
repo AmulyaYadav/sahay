@@ -88,28 +88,78 @@ Note `arch=arm64` in the apt line.
 
 ## 5. A hostname
 
-Caddy needs a real hostname to get a Let's Encrypt certificate — an IP address
-will not do. **Cloudflare does not give away domains**: Cloudflare Registrar
-sells them at wholesale cost with no markup (~$10.44/yr for `.com`, so about
-$0.87/month), and what is free is their DNS, proxy, and `*.pages.dev`
-subdomains. Options, cheapest first:
+Caddy needs a real hostname to get a Let's Encrypt certificate — an IP will not
+do. **Cloudflare does not give away domains:** Cloudflare Registrar sells them at
+wholesale cost with no markup (~$10.44/yr for `.com`, about $0.87/month), and
+what is free is their DNS, proxy, and `*.pages.dev` subdomains.
 
-| Option | Cost | Notes |
+Two things decide whether a free option actually works, and both were measured
+from an Indian consumer connection (BSNL resolver) in July 2026:
+
+**Does it resolve for your users?**
+
+| Name | ISP resolver | 1.1.1.1 / 8.8.8.8 / 9.9.9.9 |
 |---|---|---|
-| `sslip.io` / `nip.io` | free, no signup | `<your-ip>.sslip.io` resolves to that IP. Ugly but instant, and HTTP-01 works. |
-| **DuckDNS** or FreeDNS (afraid.org) | free | A real subdomain like `sahay.duckdns.org`. Point the A record at your instance's public IP. Best free option. |
-| Cloudflare Registrar | ~$0.87/mo for `.com`, less for `.in` | At cost. Free DNS, WHOIS privacy and DNSSEC included. What you want if this outlives the prototype. |
-| GitHub Student Pack | free for a year | Includes a `.me` via Namecheap, if you are eligible. |
+| `duckdns.org` | **no answer** | resolves |
+| `*.sslip.io`, `*.nip.io` | resolves | resolves |
+| `freedns.afraid.org` | resolves, but to an address in the **ISP's own range** | resolves to the real host |
 
-Set `SITE_ADDRESS` to whichever you choose. Caddy handles TLS automatically.
+DuckDNS returning NXDOMAIN on a major Indian ISP while every public resolver
+answers is consistent with ISP-level DNS filtering — several Indian ISPs block
+dynamic-DNS providers because they get used for malware command-and-control.
+This is the nastiest possible failure mode for an India-facing app: Let's
+Encrypt uses its own resolvers so the certificate issues fine, the site looks
+healthy from most of the world, and the users you built it for cannot reach it.
+Nothing you can do server-side fixes it, and you cannot ask visitors to change
+their DNS.
 
-**If you put Cloudflare's proxy (orange cloud) in front:** use Full (strict) SSL,
-and note that `req.ip` then sees Cloudflare's edge unless the real client IP is
-forwarded — the per-IP rate limits on login and OTP would otherwise apply to
-Cloudflare as a whole rather than per user. Fastify already runs with
-`trustProxy: true`, and Cloudflare puts the client IP first in
-`X-Forwarded-For`, so this works — but verify it rather than assume, because
-getting it wrong silently weakens a security control.
+**Will Let's Encrypt actually issue?** Rate limits apply per registered domain,
+which the Public Suffix List defines:
+
+| Name | On the PSL? | Consequence |
+|---|---|---|
+| `duckdns.org` | **yes** | Your subdomain gets its own rate-limit bucket. Clean. |
+| `sslip.io`, `nip.io`, `afraid.org` | **no** | Every user of that service shares one bucket (50 certs/week). Issuance can fail for reasons that have nothing to do with you. |
+
+So each free option is defective in a different way, and they are not the same
+kind of defect: DuckDNS is clean on certificates but unreachable for your
+audience; sslip.io is reachable but its certificates depend on strangers.
+
+**Recommendation: buy the domain.** At Cloudflare's at-cost pricing this is
+~$0.87/month for `.com` and less for `.in` — the only line item in this whole
+deployment — and it removes all three problems at once: it resolves everywhere,
+it is its own registrable domain for rate limits, there is no 30-day renewal
+chore, and you can put Cloudflare's free DNS and proxy in front of it. If the
+prototype is worth an Oracle account and an evening of setup, it is worth that.
+
+### If you use DuckDNS anyway
+
+Sign up at duckdns.org, pick a label, and note the token. Then in `.env.prod`:
+
+```
+SITE_ADDRESS=<label>.duckdns.org
+DUCKDNS_DOMAIN=<label>          # the label only, no ".duckdns.org"
+DUCKDNS_TOKEN=<your token>
+```
+
+DuckDNS releases a subdomain that has not been updated for 30 days, so the
+update is what keeps the name, not just what moves it. `ops/duckdns-update.sh`
+does one update and fails loudly if the API answers `KO` (it returns HTTP 200
+either way, so the exit code alone is not enough to tell). Schedule it:
+
+```bash
+*/5 * * * * cd /srv/sahay && ./ops/duckdns-update.sh >> /var/log/duckdns.log 2>&1
+```
+
+Run it once by hand and confirm the name resolves to your instance **before**
+starting the stack — Caddy's HTTP-01 challenge needs the A record live, or it
+will fail and back off.
+
+### If you use sslip.io
+
+No signup and nothing to schedule: `SITE_ADDRESS=<your-ip-with-dashes>.sslip.io`,
+e.g. `129-153-1-2.sslip.io`. Accept that certificate issuance shares a rate-limit
+bucket with every other user of the service.
 
 ## 6. Deploy
 
