@@ -38,6 +38,10 @@ export const users = pgTable('users', {
   emailEnc: text('email_enc'),
   emailHmac: text('email_hmac').unique(),
   emailVerifiedAt: ts('email_verified_at'),
+  // Staff-only credentials (admin/moderator sign-in on web); null for volunteers.
+  username: text('username').unique(),
+  passwordHash: text('password_hash'),
+  passwordSetAt: ts('password_set_at'),
   canRequest: boolean('can_request').notNull().default(true),
   canHelp: boolean('can_help').notNull().default(true),
   suspendedUntil: ts('suspended_until'),

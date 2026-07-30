@@ -10,10 +10,19 @@ Honest list, kept current. Users deserve these stated plainly; contributors shou
   legal order could compel what exists within retention. Stated fully in
   [privacy-and-retention.md](privacy-and-retention.md). Mitigation: short retention,
   say-nothing-you-wouldn't-say-in-person guidance.
-- **Phone number requirement excludes phoneless users** — and shared-phone households
-  get one account per number (`phone_hmac` UNIQUE). The explicit tradeoff of ADR-0006:
-  abuse friction was judged worth the exclusion. No workaround at launch; assisted/
+- **Email addresses are free, so bans are evadable.** ADR-0011 replaced phone-binding
+  with email, knowingly giving up the anti-Sybil property ADR-0006 was built around: a
+  banned user can register again with a new address. No mitigation ships in this pass —
+  no disposable-domain blocklist, no device fingerprinting, no review gate before a
+  first request. Revisit when it becomes an observed problem, not before.
+- **Email requirement still excludes some users** — one account per address
+  (`email_hmac` UNIQUE), so a shared family inbox is a shared account. Assisted /
   organizer-mediated requests are a possible future.
+- **No self-service password reset for staff, and no way to bootstrap the first admin.**
+  Staff credentials are issued by existing admins (ADR-0013). Local dev seeds
+  `demo-admin`; a real deployment has no path to its first account yet — that belongs
+  with the deployment story and is not solved. Lost passwords are reissued by another
+  admin, which also does not revoke the compromised account's live sessions.
 - **The platform guarantees nothing.** It is a matchmaker: no delivery promises, no
   vetting of goods beyond category rules and sealed-item guidance, no background checks.
   UX copy must never imply otherwise.
@@ -29,10 +38,12 @@ Honest list, kept current. Users deserve these stated plainly; contributors shou
   restore; RPO up to 24 h on nightly dumps until WAL archiving is enabled
   ([incident-response.md](incident-response.md)). Accepted for budget; degradation mode
   is people helping each other without an app.
-- **SMS delivery at congested events is unreliable.** Cell networks saturate exactly
-  when Sahay is most needed; OTP delivery (login) suffers first. Existing sessions
-  (60-day) keep working — encourage sign-in *before* the event. SMS is also the main
-  cost-attack surface (rate limits double as spend caps).
+- **Email OTP delivery is a launch-blocking dependency for new sign-ins.** Spam
+  filtering, provider reputation, and mobile data at a congested event all sit between
+  a volunteer and their code. Existing sessions (60-day) keep working — encourage
+  sign-in *before* the event. Outbound email is also the main cost-attack surface
+  (rate limits double as spend caps). Staff are insulated: username+password needs no
+  delivery at all (ADR-0013).
 - **WebSocket hints are at-most-once** — clients on flaky networks may run seconds
   behind until refetch (ADR-0005). Offer deadlines are server-side, so correctness
   holds; perceived snappiness degrades.

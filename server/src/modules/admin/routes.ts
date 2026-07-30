@@ -6,7 +6,7 @@
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminEventWants, zAdminModerate, zUuid } from '@sahay/shared';
+import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminEventWants, zAdminModerate, zCreateAdmin, zUuid } from '@sahay/shared';
 import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '../../db/index.js';
 import { errors } from '../../lib/errors.js';
@@ -14,6 +14,8 @@ import { resolveAuth } from '../../plugins/auth.js';
 import { mapCategory } from '../catalogue/service.js';
 import { setAdminWants } from '../events/wants.js';
 import {
+  createAdminAccount,
+  resetAdminPassword,
   adminPatchCategory,
   adminPatchEvent,
   adminStats,
@@ -121,6 +123,16 @@ export function registerAdminRoutes(app: FastifyInstance): void {
     await setAdminWants(zUuid.parse(req.params.id), body.categorySlugs);
     return { ok: true };
   });
+
+  // Staff accounts. Admin-tier only: these grant console access.
+  app.post('/admin/admins', admin, async (req) => {
+    const body = zCreateAdmin.parse(req.body);
+    return createAdminAccount(req.auth!.userId, body);
+  });
+
+  app.post<{ Params: { id: string } }>('/admin/admins/:id/reset-password', admin, async (req) =>
+    resetAdminPassword(req.auth!.userId, zUuid.parse(req.params.id)),
+  );
 
   app.get('/admin/categories', admin, async () => {
     const rows = await getDb().select().from(schema.categories).orderBy(asc(schema.categories.sortOrder));

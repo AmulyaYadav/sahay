@@ -29,8 +29,8 @@ test('anonymous visitor sees the event on the landing page with its area and wan
 
   await page.goto('/');
 
-  // Volunteer CTA is present on the landing page without any login.
-  await expect(page.getByRole('heading', { name: 'Become a Sahay volunteer' })).toBeVisible();
+  // The get-the-app CTA is present on the landing page without any login.
+  await expect(page.getByRole('heading', { name: 'Works on any device' })).toBeVisible();
 
   const card = page.getByRole('link', { name: PUBLIC_EVENT_TITLE });
   await expect(card).toBeVisible();
@@ -40,15 +40,14 @@ test('anonymous visitor sees the event on the landing page with its area and wan
   await expect(page).toHaveURL(new RegExp(`/events/${fixture!.code}`));
   await expect(page.getByRole('heading', { name: 'What this event needs' })).toBeVisible();
   await expect(page.getByText(PUBLIC_EVENT_AREA)).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Become a Sahay volunteer' })).toBeVisible();
+
 });
 
 test('signing in is not required to view any public page', async ({ page, request }) => {
   await page.goto('/');
-  // Exact match: the header nav's "Sign in" link, distinct from the hero's
-  // "Admin sign in" CTA — both lead to /auth, but this asserts the nav path
-  // specifically since that's the one present on every page via AppShell.
-  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible();
+  // The web app is the admin console, so the only sign-in affordance is the
+  // header's "Admin Sign in" pill (AppShell renders it on every page).
+  await expect(page.getByRole('link', { name: 'Admin Sign in' })).toBeVisible();
   // No redirect to /auth happens just from visiting the landing page.
   await expect(page).toHaveURL('/');
 

@@ -128,13 +128,30 @@ export async function loginViaApi(request: APIRequestContext, email: string): Pr
 
 /** Full UI login: /auth → email → fixed OTP → lands on /admin (the only
  * authenticated destination Auth.tsx's `dest` resolves to without a `next`). */
-export async function loginViaUi(page: Page, email: string): Promise<void> {
-  await clearOtpRateLimits();
+/**
+ * Issues staff credentials for an existing admin through the real
+ * POST /admin/admins endpoint. The web console is username+password only
+ * (ADR-0013), so UI sign-in needs credentials rather than an OTP.
+ */
+export async function issueStaffCredentials(
+  request: APIRequestContext,
+  adminToken: string,
+  username: string,
+  email: string,
+): Promise<{ username: string; password: string }> {
+  const created = await apiRaw<{ username: string; password: string }>(request, '/admin/admins', {
+    token: adminToken,
+    body: { username, email, role: 'admin' },
+  });
+  return { username: created.username, password: created.password };
+}
+
+/** Full UI sign-in through the admin console's username + password form. */
+export async function loginViaUi(page: Page, username: string, password: string): Promise<void> {
   await page.goto('/auth');
-  await page.getByLabel('Email address').fill(email);
-  await page.getByRole('button', { name: 'Send code' }).click();
-  await page.getByLabel('Enter the 6-digit code').fill(FIXED_OTP);
-  await page.getByRole('button', { name: 'Verify' }).click();
+  await page.getByLabel('Username').fill(username);
+  await page.getByLabel('Password').fill(password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL('**/admin');
 }
 

@@ -44,9 +44,7 @@ export function AppShell() {
           <div className="app-header-inner">
             <Link to="/" className="app-logo">
               <Icon name="heart" size={24} />
-              <span>
-                {t('common.appName')} <span lang="hi">सहाय</span>
-              </span>
+              <span>{t('common.appName')}</span>
             </Link>
             <nav className="app-nav-desktop" aria-label={t('misc.menu')}>
               <LanguageToggle />

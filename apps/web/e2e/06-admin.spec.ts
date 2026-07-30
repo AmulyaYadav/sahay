@@ -27,6 +27,7 @@ import {
   createRequest,
   db,
   joinEvent,
+  issueStaffCredentials,
   loginViaApi,
   loginViaUi,
   apiRaw,
@@ -56,13 +57,15 @@ async function fillModerationReason(page: Page, reason: string): Promise<void> {
 test.beforeAll(async ({ browser, request }) => {
   const { eventId, organizerEmail } = readState();
 
-  // Promote the admin account via SQL, then sign in through the UI.
+  // Promote the admin via SQL, then have it issue itself web console
+  // credentials — the console is username+password only (ADR-0013).
   admin = await loginViaApi(request, ADMIN_EMAIL);
   await db(`UPDATE users SET role = 'admin' WHERE id = $1`, [admin.user.id]);
+  const creds = await issueStaffCredentials(request, admin.token, 'e2e.admin06', 'e2e-admin-06-console@example.com');
 
   adminCtx = await contextAt(browser, 0);
   adminPage = await adminCtx.newPage();
-  await loginViaUi(adminPage, ADMIN_EMAIL);
+  await loginViaUi(adminPage, creds.username, creds.password);
 
   // A pending public event, created by the organizer via the API.
   const organizer = await loginViaApi(request, organizerEmail);

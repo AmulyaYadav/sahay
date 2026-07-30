@@ -65,9 +65,9 @@ export function LandingPage() {
           </h1>
           <p>{t('landing.heroBody')}</p>
           <div className="landing-cta-row">
-            <span className="btn btn-primary" aria-disabled="true">
+            <a href="#get-the-app" className="btn btn-primary">
               {t('landing.downloadCta')}
-            </span>
+            </a>
             <a href="#how-it-works" className="btn btn-secondary">
               {t('landing.howItWorksCta')} <Icon name="chevronDown" size={16} />
             </a>
@@ -258,13 +258,13 @@ export function LandingPage() {
         </Card>
       </section>
 
-      <section className="landing-section" style={{ marginTop: 'var(--sp-6)' }}>
+      <section id="get-the-app" aria-labelledby="install-title" className="landing-section" style={{ marginTop: 'var(--sp-6)' }}>
         <div className="info-banner" style={{ background: 'var(--c-success-tint)' }}>
           <span className="info-banner-icon" style={{ background: 'var(--c-surface)', color: 'var(--c-success-text)' }}>
             <IllustrationVignette name="box" size={40} />
           </span>
           <div className="info-banner-body">
-            <h2>{t('landing.installTitle')}</h2>
+            <h2 id="install-title">{t('landing.installTitle')}</h2>
             <p>{t('landing.installBody')}</p>
           </div>
           <div className="info-banner-actions">
@@ -283,9 +283,7 @@ export function LandingPage() {
           <div className="footer-brand">
             <div className="app-logo" style={{ pointerEvents: 'none' }}>
               <Icon name="heart" size={22} />
-              <span>
-                {t('common.appName')} <span lang="hi">सहाय</span>
-              </span>
+              <span>{t('common.appName')}</span>
             </div>
             <p>{t('landing.footerBrandBody')}</p>
           </div>

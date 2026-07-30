@@ -1,8 +1,8 @@
 import type { FastifyInstance } from 'fastify';
-import { zOtpStart, zOtpVerify, zUuid } from '@sahay/shared';
+import { zOtpStart, zOtpVerify, zPasswordLogin, zUuid } from '@sahay/shared';
 import { errors } from '../../lib/errors.js';
 import { publishToUser } from '../../realtime/hub.js';
-import { listSessions, revokeSession, startOtp, verifyOtp } from './service.js';
+import { listSessions, loginWithPassword, revokeSession, startOtp, verifyOtp } from './service.js';
 
 export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/otp/start', async (req) => {
@@ -13,6 +13,12 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/otp/verify', async (req) => {
     const body = zOtpVerify.parse(req.body);
     return verifyOtp(body.email, body.code, body.device);
+  });
+
+  // Staff sign-in (admin console). Volunteers use the OTP routes above.
+  app.post('/auth/login', async (req) => {
+    const body = zPasswordLogin.parse(req.body);
+    return loginWithPassword(body.username, body.password, body.device, req.ip);
   });
 
   app.post('/auth/logout', { preHandler: [app.authenticate] }, async (req) => {

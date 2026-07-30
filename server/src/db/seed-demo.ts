@@ -18,7 +18,14 @@ import { loadConfig } from '../config.js';
 import { closeDb, getDb, schema } from './index.js';
 import { runMigrations } from './migrate.js';
 import { seedCatalogue } from './seed.js';
-import { emailBlindIndex, encryptPii, shortCode } from '../lib/crypto.js';
+import { emailBlindIndex, encryptPii, hashPassword, shortCode } from '../lib/crypto.js';
+
+/**
+ * Fixed password for the seeded staff accounts. This is demo data for local
+ * development only — the seed refuses to run against a database that already
+ * has demo users, and nothing here should ever reach a real deployment.
+ */
+const DEMO_STAFF_PASSWORD = 'demo-admin-local-only';
 
 const HOUR = 3600_000;
 const DAY = 24 * HOUR;
@@ -33,6 +40,8 @@ async function makeUser(
     role?: string;
     createdDaysAgo?: number;
     stats?: Partial<typeof schema.reliabilityStats.$inferInsert>;
+    /** Staff sign-in credentials (dev only — see the summary note below). */
+    credentials?: { username: string; password: string };
   },
 ) {
   const [user] = await db
@@ -44,6 +53,13 @@ async function makeUser(
       emailEnc: encryptPii(opts.email),
       emailHmac: emailBlindIndex(opts.email),
       emailVerifiedAt: new Date(),
+      ...(opts.credentials
+        ? {
+            username: opts.credentials.username,
+            passwordHash: hashPassword(opts.credentials.password),
+            passwordSetAt: new Date(),
+          }
+        : {}),
       createdAt: new Date(Date.now() - (opts.createdDaysAgo ?? 1) * DAY),
     })
     .returning();
@@ -132,9 +148,11 @@ export async function seedDemo(): Promise<void> {
 
   const admin = await makeUser(db, {
     pseudonym: 'Demo Admin', email: 'demo-admin@demo.sahay.local', role: 'admin', createdDaysAgo: 90,
+    credentials: { username: 'demo-admin', password: DEMO_STAFF_PASSWORD },
   });
   const moderator = await makeUser(db, {
     pseudonym: 'Demo Lantern', email: 'demo-lantern@demo.sahay.local', role: 'moderator', createdDaysAgo: 60,
+    credentials: { username: 'demo-lantern', password: DEMO_STAFF_PASSWORD },
   });
 
   const participants: (typeof schema.users.$inferSelect)[] = [];
@@ -164,75 +182,81 @@ export async function seedDemo(): Promise<void> {
 
   /* -------------------------------------------------------------- events */
 
-  const kitchenLat = 18.5204;
-  const kitchenLng = 73.8567;
-  const kitchen = await makeEvent(db, {
-    title: 'Pune Riverside Community Kitchen',
-    type: 'community_kitchen',
+  // Jantar Mantar, New Delhi — the event carrying the full demo dataset
+  // (helpers, requests, matches, chat), so its helper coordinates are all
+  // offsets from this centre.
+  const protestLat = 28.627;
+  const protestLng = 77.2166;
+  const protest = await makeEvent(db, {
+    title: 'Jantar Mantar Student Protests',
+    type: 'public_gathering',
     status: 'active',
     visibility: 'public',
     publicApproved: true,
-    areaLabel: 'Riverside Ghat, Pune',
-    lat: kitchenLat,
-    lng: kitchenLng,
+    areaLabel: 'Jantar Mantar, New Delhi',
+    lat: protestLat,
+    lng: protestLng,
     radiusM: 3000,
     startsAt: new Date(Date.now() - 2 * HOUR),
     endsAt: new Date(Date.now() + 10 * HOUR),
     createdBy: admin.id,
   });
-  const camp = await makeEvent(db, {
-    title: 'Sector 12 Relief Camp',
+  const reliefLat = 23.2419;
+  const reliefLng = 69.6669;
+  const relief = await makeEvent(db, {
+    title: 'Bhuj Earthquake Disaster Relief Drive',
     type: 'relief_operation',
     status: 'active',
-    visibility: 'unlisted',
-    areaLabel: 'Sector 12 Community Ground',
-    lat: 18.55,
-    lng: 73.9,
+    visibility: 'public',
+    publicApproved: true,
+    areaLabel: 'Bhuj, Kachchh, Gujarat',
+    lat: reliefLat,
+    lng: reliefLng,
     startsAt: new Date(Date.now() - 6 * HOUR),
     endsAt: new Date(Date.now() + 48 * HOUR),
     createdBy: moderator.id,
   });
-  const winterDrive = await makeEvent(db, {
-    title: 'University Winter Drive',
-    type: 'campus_event',
+  const cleanup = await makeEvent(db, {
+    title: 'Juhu Beach Volunteer Cleanup Drive',
+    type: 'community_event',
     status: 'scheduled',
     visibility: 'public',
     publicApproved: true,
-    areaLabel: 'University Main Quad',
-    lat: 18.46,
-    lng: 73.83,
+    areaLabel: 'Juhu Beach, Mumbai',
+    lat: 19.099,
+    lng: 72.8265,
     startsAt: new Date(Date.now() + 2 * DAY),
     endsAt: new Date(Date.now() + 3 * DAY),
     createdBy: p1.id,
   });
 
-  await join(db, admin.id, kitchen.id, 'event_admin');
-  await join(db, moderator.id, kitchen.id);
-  await join(db, moderator.id, camp.id, 'event_admin');
-  await join(db, p1.id, winterDrive.id, 'event_admin');
-  for (const u of [vet, p1, p2, p3, p4, p5, p6, p7, p8]) await join(db, u.id, kitchen.id);
-  for (const u of [vet, p9, p10, p11]) await join(db, u.id, camp.id);
-  for (const u of [p2, p3, p9]) await join(db, u.id, winterDrive.id);
+  await join(db, admin.id, protest.id, 'event_admin');
+  await join(db, moderator.id, protest.id);
+  await join(db, moderator.id, relief.id, 'event_admin');
+  await join(db, p1.id, cleanup.id, 'event_admin');
+  for (const u of [vet, p1, p2, p3, p4, p5, p6, p7, p8]) await join(db, u.id, protest.id);
+  for (const u of [vet, p9, p10, p11]) await join(db, u.id, relief.id);
+  for (const u of [p2, p3, p9]) await join(db, u.id, cleanup.id);
 
   /* ---------------------------------------------- inventory + availability */
 
   const expiry = new Date(Date.now() + 90 * DAY).toISOString().slice(0, 10);
-  const vetWater = await addItem(db, vet.id, kitchen.id, water.id, 24, 'bottle', { sealed: true, expiryDate: expiry, packageSize: '1 litre' });
-  await addItem(db, p1.id, kitchen.id, water.id, 12, 'bottle', { sealed: true, expiryDate: expiry });
-  const p2Water = await addItem(db, p2.id, kitchen.id, water.id, 6, 'bottle', { sealed: true });
-  await addItem(db, p3.id, kitchen.id, water.id, 10, 'bottle', { sealed: true, expiryDate: expiry });
-  const p4Blankets = await addItem(db, p4.id, kitchen.id, blanket.id, 5, 'blanket', { condition: 'good' });
-  await addItem(db, p1.id, kitchen.id, pads.id, 4, 'packet', { sealed: true });
-  await addItem(db, p5.id, kitchen.id, powerBank.id, 2, 'piece', { chargePercent: 85 });
-  await addItem(db, p9.id, camp.id, bandages.id, 40, 'piece', { sealed: true, expiryDate: expiry });
-  await addItem(db, p10.id, camp.id, blanket.id, 8, 'blanket', { condition: 'new' });
-  await addItem(db, vet.id, camp.id, water.id, 18, 'bottle', { sealed: true });
+  const vetWater = await addItem(db, vet.id, protest.id, water.id, 24, 'bottle', { sealed: true, expiryDate: expiry, packageSize: '1 litre' });
+  await addItem(db, p1.id, protest.id, water.id, 12, 'bottle', { sealed: true, expiryDate: expiry });
+  const p2Water = await addItem(db, p2.id, protest.id, water.id, 6, 'bottle', { sealed: true });
+  await addItem(db, p3.id, protest.id, water.id, 10, 'bottle', { sealed: true, expiryDate: expiry });
+  const p4Blankets = await addItem(db, p4.id, protest.id, blanket.id, 5, 'blanket', { condition: 'good' });
+  await addItem(db, p1.id, protest.id, pads.id, 4, 'packet', { sealed: true });
+  await addItem(db, p5.id, protest.id, powerBank.id, 2, 'piece', { chargePercent: 85 });
+  await addItem(db, p9.id, relief.id, bandages.id, 40, 'piece', { sealed: true, expiryDate: expiry });
+  await addItem(db, p10.id, relief.id, blanket.id, 8, 'blanket', { condition: 'new' });
+  await addItem(db, vet.id, relief.id, water.id, 18, 'bottle', { sealed: true });
 
-  await helpingNow(db, vet.id, kitchen.id, kitchenLat + 0.001, kitchenLng);
-  await helpingNow(db, p1.id, kitchen.id, kitchenLat - 0.001, kitchenLng + 0.001);
-  await helpingNow(db, p2.id, kitchen.id, kitchenLat + 0.002, kitchenLng - 0.001);
-  await helpingNow(db, p3.id, kitchen.id, kitchenLat, kitchenLng + 0.002);
-  await helpingNow(db, p9.id, camp.id, 18.551, 73.901);
+  await helpingNow(db, vet.id, protest.id, protestLat + 0.001, protestLng);
+  await helpingNow(db, p1.id, protest.id, protestLat - 0.001, protestLng + 0.001);
+  await helpingNow(db, p2.id, protest.id, protestLat + 0.002, protestLng - 0.001);
+  await helpingNow(db, p3.id, protest.id, protestLat, protestLng + 0.002);
+  await helpingNow(db, p9.id, relief.id, reliefLat + 0.001, reliefLng + 0.001);
 
   /* ------------------------------------------------------------- requests */
 
@@ -256,16 +280,16 @@ export async function seedDemo(): Promise<void> {
   };
 
   // Two live searching requests (water + sanitary pads).
-  await mkRequest({ eventId: kitchen.id, requesterId: p6.id, categoryId: water.id, qty: 2, unit: 'bottle', status: 'searching', note: 'near the food counter, green kurta' });
-  await mkRequest({ eventId: kitchen.id, requesterId: p7.id, categoryId: pads.id, qty: 1, unit: 'packet', status: 'searching', urgency: 'soon' });
+  await mkRequest({ eventId: protest.id, requesterId: p6.id, categoryId: water.id, qty: 2, unit: 'bottle', status: 'searching', note: 'near the food counter, green kurta' });
+  await mkRequest({ eventId: protest.id, requesterId: p7.id, categoryId: pads.id, qty: 1, unit: 'packet', status: 'searching', urgency: 'soon' });
 
   // A second + third distinct water requester so aggregate demand clears k=3.
-  await mkRequest({ eventId: kitchen.id, requesterId: p8.id, categoryId: water.id, qty: 3, unit: 'bottle', status: 'searching', areaHint: 'north gate' });
-  await mkRequest({ eventId: kitchen.id, requesterId: p5.id, categoryId: water.id, qty: 1, unit: 'bottle', status: 'searching' });
+  await mkRequest({ eventId: protest.id, requesterId: p8.id, categoryId: water.id, qty: 3, unit: 'bottle', status: 'searching', areaHint: 'north gate' });
+  await mkRequest({ eventId: protest.id, requesterId: p5.id, categoryId: water.id, qty: 1, unit: 'bottle', status: 'searching' });
 
   // One request that found nobody.
   await mkRequest({
-    eventId: kitchen.id, requesterId: p8.id, categoryId: powerBank.id, qty: 1, unit: 'piece',
+    eventId: protest.id, requesterId: p8.id, categoryId: powerBank.id, qty: 1, unit: 'piece',
     status: 'no_match', expiresAt: new Date(Date.now() - HOUR), closedAt: new Date(Date.now() - HOUR),
   });
 
@@ -336,7 +360,7 @@ export async function seedDemo(): Promise<void> {
 
   // 1. Fulfilled water request with a completed match, chat, and reliability.
   const fulfilled = await mkRequest({
-    eventId: kitchen.id, requesterId: p7.id, categoryId: water.id, qty: 2, unit: 'bottle',
+    eventId: protest.id, requesterId: p7.id, categoryId: water.id, qty: 2, unit: 'bottle',
     status: 'fulfilled', qtyFulfilled: '2',
     createdAt: new Date(Date.now() - 90 * 60_000),
     expiresAt: new Date(Date.now() - 45 * 60_000),
@@ -372,7 +396,7 @@ export async function seedDemo(): Promise<void> {
 
   // 2. Partially fulfilled blanket request (3 wanted, 2 handed over so far).
   const partial = await mkRequest({
-    eventId: kitchen.id, requesterId: p6.id, categoryId: blanket.id, qty: 3, unit: 'blanket',
+    eventId: protest.id, requesterId: p6.id, categoryId: blanket.id, qty: 3, unit: 'blanket',
     status: 'partially_fulfilled', qtyFulfilled: '2',
     createdAt: new Date(Date.now() - 2 * HOUR),
     expiresAt: new Date(Date.now() - 80 * 60_000),
@@ -389,7 +413,7 @@ export async function seedDemo(): Promise<void> {
 
   // 3. A disputed match — the two reports did not agree.
   const disputedReq = await mkRequest({
-    eventId: kitchen.id, requesterId: p8.id, categoryId: water.id, qty: 2, unit: 'bottle',
+    eventId: protest.id, requesterId: p8.id, categoryId: water.id, qty: 2, unit: 'bottle',
     status: 'searching',
     createdAt: new Date(Date.now() - 70 * 60_000),
     expiresAt: new Date(Date.now() + 20 * 60_000),
@@ -407,7 +431,7 @@ export async function seedDemo(): Promise<void> {
   await db.insert(schema.reports).values({
     reporterId: p2.id,
     subjectUserId: p8.id,
-    subjectEventId: kitchen.id,
+    subjectEventId: protest.id,
     matchId: disputed.match.id,
     category: 'false_request',
     note: 'Requester confirmed zero after taking both bottles.',
@@ -419,7 +443,7 @@ export async function seedDemo(): Promise<void> {
     .values({
       reporterId: p6.id,
       subjectUserId: p5.id,
-      subjectEventId: kitchen.id,
+      subjectEventId: protest.id,
       category: 'no_show',
       note: 'Waited 20 minutes at the agreed spot.',
       status: 'resolved',
@@ -457,7 +481,7 @@ export async function seedDemo(): Promise<void> {
     { userId: p6.id, type: 'event_notice', titleKey: 'notifications.event_notice', bodyKey: 'moderation.noticeBody', params: { body: 'Hot meals are being served at the riverside counter until 9 pm.' } },
   ]);
   await db.insert(schema.eventNotices).values({
-    eventId: kitchen.id,
+    eventId: protest.id,
     body: 'Hot meals are being served at the riverside counter until 9 pm.',
     createdBy: admin.id,
   });
@@ -468,18 +492,22 @@ export async function seedDemo(): Promise<void> {
 demo seed complete — all data is fictional.
 
 events
-  ${kitchen.title}  (public, active)      code ${kitchen.code}
-  ${camp.title}     (unlisted, active)    code ${camp.code}
-  ${winterDrive.title} (public, scheduled) code ${winterDrive.code}
+  ${protest.title}  (public, active)      code ${protest.code}
+  ${relief.title}  (public, active)      code ${relief.code}
+  ${cleanup.title}  (public, scheduled)  code ${cleanup.code}
 
-log in (console email provider prints the OTP to the server console):
+admin console sign-in (http://localhost:5173/auth) — username + password:
+  demo-admin     ${DEMO_STAFF_PASSWORD}   (admin)
+  demo-lantern   ${DEMO_STAFF_PASSWORD}   (moderator)
+
+volunteer sign-in on mobile uses email OTP (console provider prints the code):
   demo-admin@demo.sahay.local  Demo Admin      (admin)
   demo-lantern@demo.sahay.local  Demo Lantern    (moderator)
   participants (demo-user-0 … demo-user-11):
 ${participants.map((p, i) => `    demo-user-${i}@demo.sahay.local  ${p.pseudonym}`).join('\n')}
 
-the "${kitchen.title}" dashboard has k≥3 distinct users on water —
-GET /api/v1/events/${kitchen.id}/dashboard shows live numbers.
+the "${protest.title}" dashboard has k≥3 distinct users on water —
+GET /api/v1/events/${protest.id}/dashboard shows live numbers.
 `);
 }
 

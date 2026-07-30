@@ -3,7 +3,7 @@
  * turned into a blind index (HMAC) for lookup and AES-GCM ciphertext for
  * storage. Neither the email nor the OTP code is ever logged.
  */
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
 import { LIMITS, pseudonymFromIndexes, type AuthSession, type Locale, type Me } from '@sahay/shared';
 import { loadConfig } from '../../config.js';
@@ -12,15 +12,28 @@ import {
   emailBlindIndex,
   encryptPii,
   hashOtp,
+  hashPassword,
   newOtpCode,
   newSessionToken,
   safeEqualHex,
+  verifyPassword,
 } from '../../lib/crypto.js';
 import { errors } from '../../lib/errors.js';
 import { rateLimit } from '../../lib/redis.js';
 import { getOtpProvider } from '../../lib/email.js';
 
 const OTP_RETRY_AFTER_SECONDS = 60;
+
+/**
+ * Hash of an unguessable value, compared against when a username does not
+ * exist so that unknown-user and wrong-password attempts cost the same time.
+ * Built on first use rather than at import so startup isn't blocked by scrypt.
+ */
+let dummyPasswordHash: string | null = null;
+function dummyHash(): string {
+  dummyPasswordHash ??= hashPassword(randomBytes(32).toString('hex'));
+  return dummyPasswordHash;
+}
 
 export function randomPseudonym(): string {
   return pseudonymFromIndexes(randomInt(1024), randomInt(1024));
@@ -180,6 +193,59 @@ export async function verifyOtp(
   });
 
   return { token, expiresAt: expiresAt.toISOString(), user: toMe(user), isNewAccount };
+}
+
+/**
+ * Staff sign-in with username + password (web admin console). Volunteers keep
+ * using email OTP; this path exists because admin credentials are issued by the
+ * operators rather than self-served (ADR-0013).
+ *
+ * Every failure returns the same `unauthorized` error so the response cannot be
+ * used to discover which usernames exist, and a password is always hashed even
+ * when the username is unknown, so timing cannot either.
+ */
+export async function loginWithPassword(
+  username: string,
+  password: string,
+  device: { platform: 'ios' | 'android' | 'web'; name?: string },
+  ip: string,
+): Promise<AuthSession> {
+  const normalized = username.trim().toLowerCase();
+
+  // Fail CLOSED, as with OTP: a Redis error denies the attempt. The per-IP cap
+  // also bounds how much scrypt work one caller can force the server to do.
+  const userOk = await rateLimit('login:user', normalized, 5, 900).catch(() => false);
+  const ipOk = await rateLimit('login:ip', ip, 20, 900).catch(() => false);
+  if (!userOk || !ipOk) throw errors.rateLimited();
+
+  const db = getDb();
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.username, normalized))
+    .limit(1);
+
+  // Compare against a dummy hash when there is no such user, so the work done
+  // (and therefore the time taken) does not reveal whether the account exists.
+  const stored = user?.passwordHash ?? dummyHash();
+  const passwordOk = verifyPassword(password, stored);
+  if (!user || !user.passwordHash || !passwordOk) throw errors.unauthorized();
+
+  if (user.status === 'deleted' || user.deletedAt) throw errors.unauthorized();
+  if (user.status === 'suspended' || (user.suspendedUntil && user.suspendedUntil > new Date())) {
+    throw errors.accountRestricted();
+  }
+
+  const { token, tokenHash } = newSessionToken();
+  const expiresAt = new Date(Date.now() + LIMITS.sessionTtlDays * 24 * 3600_000);
+  await db.insert(schema.sessions).values({
+    userId: user.id,
+    tokenHash,
+    platform: device.platform,
+    deviceName: device.name ?? null,
+    expiresAt,
+  });
+  return { token, expiresAt: expiresAt.toISOString(), user: toMe(user), isNewAccount: false };
 }
 
 export async function revokeSession(userId: string, sessionId: string): Promise<boolean> {

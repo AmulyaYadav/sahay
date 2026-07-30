@@ -70,6 +70,32 @@ export const zOtpVerify = z.object({
     name: z.string().max(60).optional(),
   }),
 });
+/** Staff (admin/moderator) username + password sign-in on web. */
+export const zPasswordLogin = z.object({
+  username: z.string().min(1).max(64),
+  password: z.string().min(1).max(200),
+  device: z.object({
+    platform: z.enum(['ios', 'android', 'web']),
+    name: z.string().max(60).optional(),
+  }),
+});
+
+/** Result of creating a staff account: the password is shown exactly once. */
+export const zAdminCreated = z.object({
+  id: zUuid,
+  username: z.string(),
+  pseudonym: z.string(),
+  role: z.enum(['moderator', 'admin']),
+  password: z.string(), // plaintext, returned only on creation — never stored or re-readable
+});
+export type AdminCreated = z.infer<typeof zAdminCreated>;
+
+export const zCreateAdmin = z.object({
+  username: z.string().min(3).max(64).regex(/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/, 'invalid_username'),
+  email: z.string().email(),
+  role: z.enum(['moderator', 'admin']).default('moderator'),
+});
+
 export const zAuthSession = z.object({
   token: z.string(), // opaque bearer; store securely, never log
   expiresAt: zIsoDate,

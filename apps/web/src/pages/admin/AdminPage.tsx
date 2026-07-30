@@ -7,10 +7,12 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAdminEvents, useAdminNotice, useAdminSetWants, useCatalogue, useMe } from '../../api/hooks';
+import type { AdminCreated } from '@sahay/shared';
+import { ApiClientError } from '../../api/client';
+import { useAdminEvents, useAdminNotice, useAdminSetWants, useCatalogue, useCreateAdmin, useMe } from '../../api/hooks';
 import { useLocale } from '../../i18n/LocaleContext';
 import { formatDateTime } from '../../lib/format';
-import { Badge, Banner, Button, Card, EmptyState, Input, SkeletonCard, Toggle } from '../../ui/components';
+import { Badge, Banner, Button, Card, EmptyState, Input, Select, SkeletonCard, Toggle } from '../../ui/components';
 import { Dialog } from '../../ui/Dialog';
 import { useToast } from '../../ui/Toast';
 import { ModerateDialog, type ModerateTarget } from './ModerateDialog';
@@ -235,14 +237,118 @@ function WantsDialogInner({
   );
 }
 
+/**
+ * Creates staff accounts. The generated password is displayed once, here, and
+ * never again — it exists only in this response, so it has to be copied out
+ * before the panel is dismissed.
+ */
+function StaffSection() {
+  const { t } = useLocale();
+  const { toast } = useToast();
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState<'moderator' | 'admin'>('moderator');
+  const [issued, setIssued] = useState<AdminCreated | null>(null);
+  const create = useCreateAdmin();
+
+  const canSubmit = username.trim().length >= 3 && email.trim() !== '';
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit) return;
+    create.mutate(
+      { username: username.trim().toLowerCase(), email: email.trim(), role },
+      {
+        onSuccess: (created) => {
+          setIssued(created);
+          setUsername('');
+          setEmail('');
+        },
+        onError: (err) => {
+          const conflict = err instanceof ApiClientError && err.code === 'request_conflict';
+          toast(conflict ? t('admin.staffTaken') : t('common.error'), 'error');
+        },
+      },
+    );
+  };
+
+  return (
+    <Card className="card-lg">
+      <h2 style={{ marginTop: 0, fontSize: 'var(--fs-h3)' }}>{t('admin.staffTitle')}</h2>
+      <p className="text-sm text-soft">{t('admin.staffBody')}</p>
+
+      {issued ? (
+        <div className="stack">
+          <Banner tone="warn" icon="warning" role="alert">
+            {t('admin.staffPasswordOnce')}
+          </Banner>
+          <Card>
+            <div className="stack-sm">
+              <span className="field-label">{t('auth.usernameLabel')}</span>
+              <strong style={{ fontSize: 'var(--fs-h3)' }}>{issued.username}</strong>
+              <span className="field-label">{t('auth.passwordLabel')}</span>
+              <strong style={{ fontSize: 'var(--fs-h3)', letterSpacing: '0.04em', fontFamily: 'monospace' }}>
+                {issued.password}
+              </strong>
+            </div>
+          </Card>
+          <div className="row-wrap">
+            <Button
+              variant="secondary"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(`Username: ${issued.username}\nPassword: ${issued.password}`)
+                  .then(() => toast(t('createEvent.copied')))
+                  .catch(() => toast(t('common.error'), 'error'));
+              }}
+            >
+              {t('admin.staffCopy')}
+            </Button>
+            <Button variant="ghost" onClick={() => setIssued(null)}>
+              {t('common.done')}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form className="stack" onSubmit={submit}>
+          <Input
+            label={t('auth.usernameLabel')}
+            hint={t('admin.staffUsernameHint')}
+            autoCapitalize="none"
+            spellCheck={false}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+          <Input
+            label={t('auth.emailLabel')}
+            type="email"
+            hint={t('admin.staffEmailHint')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Select label={t('admin.staffRole')} value={role} onChange={(e) => setRole(e.target.value as 'moderator' | 'admin')}>
+            <option value="moderator">{t('admin.staffRoleModerator')}</option>
+            <option value="admin">{t('admin.staffRoleAdmin')}</option>
+          </Select>
+          <Button type="submit" loading={create.isPending} disabled={!canSubmit}>
+            {t('admin.staffCreate')}
+          </Button>
+        </form>
+      )}
+    </Card>
+  );
+}
+
 export function AdminPage() {
   const { t } = useLocale();
   const me = useMe();
   const isAdmin = me.data?.role === 'admin';
 
-  // The console is scoped to exactly one thing (event CRUD + wants), so
-  // there's no tab navigation to render — a single-item nav bar would just
-  // be clutter.
+  // The console is scoped to event CRUD + wants, plus staff accounts for
+  // admins, so there's no tab navigation to render — a single-item nav bar
+  // would just be clutter.
   return (
     <div className="stack">
       <h1>{t('admin.title')}</h1>
@@ -250,6 +356,7 @@ export function AdminPage() {
         {t('admin.reauthNote')}
       </Banner>
       <EventsSection isAdmin={isAdmin} />
+      {isAdmin ? <StaffSection /> : null}
     </div>
   );
 }

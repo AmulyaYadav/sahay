@@ -5,18 +5,21 @@
  * (4) notifies affected users via 'moderation_outcome' where applicable.
  * Admins never see phone data anywhere on this surface.
  */
-import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { z } from 'zod';
 import {
   MODERATION_ACTIONS,
   PROHIBITED_PATTERNS,
+  type AdminCreated,
   type ModerationActionKind,
   type zAdminModerate,
   type zAdminReportView,
   type zAdminUserView,
 } from '@sahay/shared';
 import { getDb, schema, type Tx } from '../../db/index.js';
+import { emailBlindIndex, encryptPii, hashPassword, newAdminPassword } from '../../lib/crypto.js';
+import { randomPseudonym } from '../auth/service.js';
 import { errors } from '../../lib/errors.js';
 import { notifyQueue } from '../../queues.js';
 import { publishToUser } from '../../realtime/hub.js';
@@ -518,6 +521,76 @@ export interface AdminEventPatch {
   medicalInfo?: string | null;
   startsAt?: string;
   endsAt?: string;
+}
+
+/**
+ * Creates a staff account with username + password credentials (ADR-0013).
+ * The generated password is returned to the caller exactly once and only its
+ * scrypt hash is stored, so it can never be read back — a lost password is
+ * replaced with resetAdminPassword, not recovered.
+ */
+export async function createAdminAccount(
+  actorId: string,
+  input: { username: string; email: string; role: 'moderator' | 'admin' },
+): Promise<AdminCreated> {
+  const db = getDb();
+  const username = input.username.trim().toLowerCase();
+  const emailHmac = emailBlindIndex(input.email);
+  const password = newAdminPassword();
+
+  return db.transaction(async (tx) => {
+    const [takenName] = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.username, username))
+      .limit(1);
+    if (takenName) throw errors.conflict();
+
+    const [existingEmail] = await tx
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.emailHmac, emailHmac))
+      .limit(1);
+    // An email already in use would let one person hold both a volunteer and a
+    // staff identity under the same address; reject rather than silently merge.
+    if (existingEmail && !existingEmail.deletedAt) throw errors.conflict();
+
+    const pseudonym = randomPseudonym();
+    const [created] = await tx
+      .insert(schema.users)
+      .values({
+        pseudonym,
+        avatarSeed: pseudonym,
+        role: input.role,
+        username,
+        passwordHash: hashPassword(password),
+        passwordSetAt: new Date(),
+        emailEnc: encryptPii(input.email),
+        emailHmac,
+        emailVerifiedAt: new Date(),
+      })
+      .returning();
+    if (!created) throw new Error('admin insert returned no row');
+    await tx.insert(schema.reliabilityStats).values({ userId: created.id }).onConflictDoNothing();
+    // Audit records who created which account — never the password.
+    await audit(tx, actorId, 'admin_account_create', `user:${created.id}`, `created ${input.role} @${username}`);
+
+    return { id: created.id, username, pseudonym, role: input.role, password };
+  });
+}
+
+/** Issues a fresh password for an existing staff account; returns it once. */
+export async function resetAdminPassword(actorId: string, userId: string): Promise<{ password: string }> {
+  const db = getDb();
+  const password = newAdminPassword();
+  const rows = await db
+    .update(schema.users)
+    .set({ passwordHash: hashPassword(password), passwordSetAt: new Date() })
+    .where(and(eq(schema.users.id, userId), isNotNull(schema.users.username)))
+    .returning({ id: schema.users.id });
+  if (rows.length === 0) throw errors.notFound();
+  await audit(db, actorId, 'admin_password_reset', `user:${userId}`, 'password reissued');
+  return { password };
 }
 
 export async function adminPatchEvent(actorId: string, eventId: string, patch: AdminEventPatch) {

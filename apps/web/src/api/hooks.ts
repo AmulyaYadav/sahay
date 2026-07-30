@@ -4,6 +4,7 @@
  */
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import type {
+  AdminCreated,
   AuthSession,
   Category,
   EventDashboard,
@@ -48,17 +49,17 @@ export function useMe(enabled = true): UseQueryResult<Me> {
   });
 }
 
-export function useOtpStart() {
+/**
+ * Staff sign-in. The web app is the admin console only, and admin credentials
+ * are issued by the operators, so there is no OTP flow here — volunteers sign
+ * in with email OTP on mobile instead (ADR-0013).
+ */
+export function usePasswordLogin() {
   return useMutation({
-    mutationFn: (body: { email: string; locale: 'en' | 'hi' }) =>
-      api<{ ok: boolean; retryAfterSeconds: number }>('/auth/otp/start', { body }),
-  });
-}
-
-export function useOtpVerify() {
-  return useMutation({
-    mutationFn: (body: { email: string; code: string; device: { platform: 'web'; name?: string } }) =>
-      api<AuthSession>('/auth/otp/verify', { body }),
+    mutationFn: (body: { username: string; password: string }) =>
+      api<AuthSession>('/auth/login', {
+        body: { ...body, device: { platform: 'web', name: navigator.userAgent.slice(0, 60) } },
+      }),
   });
 }
 
@@ -207,6 +208,25 @@ export function useAdminNotice() {
   return useMutation({
     mutationFn: ({ eventId, body, urgent }: { eventId: string; body: string; urgent: boolean }) =>
       api<{ ok: boolean }>(`/admin/events/${eventId}/notice`, { body: { body, urgent } }),
+  });
+}
+
+export interface CreateAdminBody {
+  username: string;
+  email: string;
+  role: 'moderator' | 'admin';
+}
+
+export function useCreateAdmin() {
+  return useMutation({
+    mutationFn: (body: CreateAdminBody) => api<AdminCreated>('/admin/admins', { body }),
+  });
+}
+
+export function useResetAdminPassword() {
+  return useMutation({
+    mutationFn: (userId: string) =>
+      api<{ password: string }>(`/admin/admins/${userId}/reset-password`, { method: 'POST', body: {} }),
   });
 }
 
