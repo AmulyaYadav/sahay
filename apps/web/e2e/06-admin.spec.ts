@@ -199,3 +199,24 @@ test('every moderation action is audited', async () => {
   // event CRUD + wants management — see ADR-0012), so there is no page to
   // render these against; the database assertion above is the full check.
 });
+
+// Last in this file on purpose: it ends the shared adminPage session.
+test('logging out returns to the public landing page and closes the console', async () => {
+  await adminPage.goto('/admin');
+  await adminPage.getByRole('button', { name: /Log out/i }).click();
+
+  // Regression: this used to leave the admin sitting on /admin. The token was
+  // cleared, but RequireModerator never re-rendered (getToken() is not
+  // reactive) and the cached `me` still reported a moderator, so the console
+  // stayed on screen after sign-out.
+  await adminPage.waitForURL('/');
+  await expect(adminPage.getByRole('link', { name: 'Admin Sign in' })).toBeVisible();
+  await expect(adminPage.getByRole('button', { name: /Log out/i })).toBeHidden();
+  await expect(adminPage.getByRole('link', { name: /Moderation/i })).toBeHidden();
+
+  expect(await adminPage.evaluate(() => localStorage.getItem('sahay.token'))).toBeNull();
+
+  // The guard holds afterwards: the console is no longer reachable.
+  await adminPage.goto('/admin');
+  await adminPage.waitForURL(/\/auth\?next=/);
+});

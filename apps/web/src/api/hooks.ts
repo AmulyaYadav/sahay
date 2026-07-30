@@ -29,7 +29,7 @@ import {
   zSessionInfo,
 } from '@sahay/shared';
 import type { z } from 'zod';
-import { api, getToken } from './client';
+import { api, clearToken, getToken } from './client';
 
 export type SessionInfo = z.infer<typeof zSessionInfo>;
 export type Availability = z.infer<typeof zAvailability>;
@@ -85,7 +85,19 @@ export function useChangePassword() {
 }
 
 export function useLogout() {
-  return useMutation({ mutationFn: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST', body: {} }) });
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ ok: boolean }>('/auth/logout', { method: 'POST', body: {} }),
+    // onSettled, not onSuccess: if the revoke request never landed we still end
+    // the local session, since the token is being thrown away either way.
+    // Clearing the cache matters as much as clearing the token — `me` and any
+    // admin data would otherwise sit there for whoever signs in next, and
+    // route guards reading cached `me` would still think a moderator is present.
+    onSettled: () => {
+      clearToken();
+      qc.clear();
+    },
+  });
 }
 
 export function useUpdateMe() {

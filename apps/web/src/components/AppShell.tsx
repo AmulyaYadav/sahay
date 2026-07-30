@@ -1,7 +1,7 @@
 /** App chrome: header, responsive nav, offline banner. */
 import { useMemo, type ReactNode } from 'react';
-import { Link, NavLink, Outlet, Navigate } from 'react-router-dom';
-import { getToken, clearToken } from '../api/client';
+import { Link, NavLink, Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { getToken } from '../api/client';
 import { useLogout, useMe } from '../api/hooks';
 import { useT } from '../i18n/LocaleContext';
 import { useWsConnection, WsContext } from '../realtime/useWs';
@@ -26,12 +26,17 @@ export function AppShell() {
   const wsValue = useMemo(() => ({ connected: ws.connected }), [ws.connected]);
   const isModerator = me.data?.role === 'moderator' || me.data?.role === 'admin';
   const logout = useLogout();
+  const navigate = useNavigate();
 
   const items: { to: string; icon: string; label: string }[] = [];
   if (isModerator) items.push({ to: '/admin', icon: 'shield', label: t('nav.admin') });
 
   const signOut = () => {
-    logout.mutate(undefined, { onSettled: () => clearToken() });
+    // useLogout clears the token and the query cache; send them to the public
+    // landing page rather than leaving them on an admin route they can no
+    // longer load. Guards would bounce them to /auth, which reads as "sign in
+    // again" when they just asked to leave.
+    logout.mutate(undefined, { onSettled: () => navigate('/', { replace: true }) });
   };
 
   return (
