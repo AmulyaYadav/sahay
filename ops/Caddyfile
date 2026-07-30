@@ -1,5 +1,9 @@
 # Production reverse proxy + static hosting.
-# Set SITE_ADDRESS (e.g. sahay.example.org) in the environment; Caddy handles TLS.
+# Set SITE_ADDRESS (e.g. sahay.online) in the environment; Caddy handles TLS.
+# Use ":80" to serve plain HTTP without a certificate (local testing).
+# Careful: the {$VAR:default} fallback below applies only when SITE_ADDRESS is
+# UNSET. Setting it to an empty string yields a headerless block and Caddy fails
+# with the unhelpful "unrecognized global option: encode".
 {$SITE_ADDRESS::80} {
 	encode gzip
 

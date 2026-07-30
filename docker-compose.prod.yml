@@ -67,7 +67,11 @@ services:
       redis:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4000/healthz"]
+      # 127.0.0.1, not localhost: the container's /etc/hosts maps localhost to
+      # both 127.0.0.1 and ::1, busybox wget picks ::1, and the server binds
+      # 0.0.0.0 (IPv4 only) — so "localhost" here is refused and the container
+      # is reported unhealthy forever while serving traffic perfectly well.
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/healthz"]
       interval: 15s
       timeout: 5s
       retries: 5

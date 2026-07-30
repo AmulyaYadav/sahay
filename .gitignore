@@ -6,6 +6,12 @@ build/
 .env
 .env.local
 .env.*.local
+# Production secrets live in .env.prod on the deployment host (see
+# docs/deployment.md). It sits in the repo directory, so it must never be
+# committed — the earlier patterns do not match it.
+.env.prod
+.env.production
+.env.prod.*
 coverage/
 playwright-report/
 test-results/
