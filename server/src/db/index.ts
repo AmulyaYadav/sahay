@@ -12,7 +12,17 @@ let db: Db | null = null;
 
 export function getPool(): pg.Pool {
   if (!pool) {
-    pool = new pg.Pool({ connectionString: loadConfig().DATABASE_URL, max: 20 });
+    const config = loadConfig();
+    pool = new pg.Pool({
+      connectionString: config.DATABASE_URL,
+      max: config.DATABASE_POOL_MAX,
+      // Set explicitly rather than relying on sslmode in the URL: node-postgres'
+      // handling of that varies by version, and silently falling back to
+      // plaintext against a managed database is not a failure mode we want.
+      ...(config.DATABASE_SSL === 'off'
+        ? {}
+        : { ssl: { rejectUnauthorized: config.DATABASE_SSL === 'verify' } }),
+    });
   }
   return pool;
 }

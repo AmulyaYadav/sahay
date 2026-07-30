@@ -16,7 +16,9 @@ Production guard: with `NODE_ENV=production` the server **refuses to start** if
 | `PORT` | no | `4000` | API listen port |
 | `HOST` | no | `0.0.0.0` | API bind address |
 | `DATABASE_URL` | **yes** | — | Postgres URL, e.g. `postgres://sahay:sahay_dev@localhost:5432/sahay` (matches docker-compose) |
-| `REDIS_URL` | no | `redis://localhost:6379` | Redis URL (BullMQ, rate limits, WS fanout) |
+| `DATABASE_SSL` | no | `off` | `off` \| `require` \| `verify`. Managed Postgres needs TLS; `require` encrypts without verifying the chain (stops passive eavesdropping, not an active MITM), `verify` also checks it. Set explicitly rather than via `sslmode` in the URL. |
+| `DATABASE_POOL_MAX` | no | `20` | Pool size **per process**. api + worker both open one, so halve this against a provider that caps connections. |
+| `REDIS_URL` | no | `redis://localhost:6379` | Redis URL (BullMQ, rate limits, WS fanout). Not optional in practice: rate limiting is fail-closed, so an unreachable Redis blocks all sign-in. |
 
 ## Cryptographic keys
 
@@ -54,6 +56,7 @@ carefully when switching providers.
 | Var | Required | Default | Purpose |
 |---|---|---|---|
 | `WEB_ORIGIN` | no | `http://localhost:5173` | Public origin of the SPA — the **only** allowed CORS origin in production, and the base for links in notifications |
+| `SCRYPT_COST_LOG2` | no | `16` | log2(N) for **new** staff password hashes. Memory per verification is `128 × 2^N × 8` B: 16 → 64 MiB, 15 → 32 MiB. Lower it on a small instance; stored hashes carry their own cost, so this never invalidates an existing password (ADR-0013). |
 | `OFFER_RESPONSE_SECONDS` | no | `45` | Default offer response window; events can override per-row (`events.offer_response_seconds`) |
 | `LOCATION_TTL_MINUTES` | no | `15` | Coarse-location row lifetime; the retention worker purges past this. Raising it weakens a privacy promise — treat as a product decision, not a knob |
 

@@ -5,6 +5,22 @@ const zConfig = z.object({
   PORT: z.coerce.number().default(4000),
   HOST: z.string().default('0.0.0.0'),
   DATABASE_URL: z.string().url(),
+  /**
+   * TLS for the Postgres connection. Managed providers (Supabase, Neon, RDS)
+   * require it; the local docker-compose Postgres does not offer it.
+   *  - 'off'     plaintext (local only)
+   *  - 'require' encrypted, certificate chain NOT verified. Stops passive
+   *              eavesdropping but not an active MITM. Needed for providers
+   *              whose pooler presents a cert outside the system trust store.
+   *  - 'verify'  encrypted AND chain verified. Prefer this wherever it works.
+   */
+  DATABASE_SSL: z.enum(['off', 'require', 'verify']).default('off'),
+  /**
+   * Pool size per process. Managed free tiers cap total connections hard
+   * (Supabase free is 60), and this app runs two processes — api and worker —
+   * so the default of 20 each must come down on a hosted deployment.
+   */
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(20),
   REDIS_URL: z.string().url().default('redis://localhost:6379'),
   PII_ENCRYPTION_KEY: z.string().regex(/^[0-9a-f]{64}$/, 'must be 32 bytes hex'),
   IDENTITY_HMAC_KEY: z.string().regex(/^[0-9a-f]{64}$/, 'must be 32 bytes hex'),
@@ -16,6 +32,15 @@ const zConfig = z.object({
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().optional(),
   WEB_ORIGIN: z.string().default('http://localhost:5173'),
+  /**
+   * scrypt cost for staff passwords, as log2(N). Memory per verification is
+   * roughly 128 * 2^this * 8 bytes: 16 → 64 MiB, 15 → 32 MiB, 14 → 16 MiB.
+   * Higher is better, but a small free-tier instance can be pushed into OOM by
+   * a handful of concurrent logins, so this is tunable per deployment. Stored
+   * hashes record the parameters they were made with, so lowering this never
+   * invalidates an existing password (ADR-0013).
+   */
+  SCRYPT_COST_LOG2: z.coerce.number().int().min(14).max(20).default(16),
   OFFER_RESPONSE_SECONDS: z.coerce.number().default(45),
   LOCATION_TTL_MINUTES: z.coerce.number().default(15),
   /** Test-only: when set, every OTP is this code (hashed/verified normally). Refused in production. */

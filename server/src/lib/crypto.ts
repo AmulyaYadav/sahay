@@ -80,15 +80,21 @@ export function safeEqualHex(a: string, b: string): boolean {
 
 /**
  * scrypt cost parameters. OWASP's stated minimum is N=2^17, which measures
- * ~520ms and ~128 MiB per verification here. Sahay runs on a single small VPS
+ * ~520ms and ~128 MiB per verification here. Sahay runs on one small machine
  * (ADR-0010), so a handful of concurrent login attempts at that setting is a
- * genuine memory-exhaustion vector; we use N=2^16 (~250ms, ~64 MiB) and lean
- * on tight per-username and per-IP rate limits instead. Raise this when the
- * deployment can afford it — stored hashes carry their own parameters, so
- * changing these values does not invalidate existing passwords.
+ * genuine memory-exhaustion vector; the default is N=2^16 (~250ms, ~64 MiB),
+ * overridable per deployment via SCRYPT_COST_LOG2 because a free-tier instance
+ * may not afford even that. Tight per-username and per-IP rate limits carry the
+ * rest of the load. Stored hashes carry their own parameters, so changing this
+ * never invalidates an existing password.
  */
-const SCRYPT = { N: 2 ** 16, r: 8, p: 1, keyLen: 32 } as const;
+const SCRYPT = { r: 8, p: 1, keyLen: 32 } as const;
 const SCRYPT_MAXMEM = 192 * 1024 * 1024;
+
+/** Work factor for NEW hashes. Verification uses whatever the record recorded. */
+function scryptN(): number {
+  return 2 ** loadConfig().SCRYPT_COST_LOG2;
+}
 
 /**
  * Hashes an admin password. Output is self-describing —
@@ -96,12 +102,14 @@ const SCRYPT_MAXMEM = 192 * 1024 * 1024;
  * without breaking passwords already on record.
  */
 export function hashPassword(password: string): string {
+  const N = scryptN();
   const salt = randomBytes(16);
   const hash = scryptSync(password.normalize('NFKC'), salt, SCRYPT.keyLen, {
     ...SCRYPT,
+    N,
     maxmem: SCRYPT_MAXMEM,
   });
-  return `scrypt$${SCRYPT.N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${hash.toString('base64')}`;
+  return `scrypt$${N}$${SCRYPT.r}$${SCRYPT.p}$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
 /**
