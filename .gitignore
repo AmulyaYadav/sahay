@@ -12,6 +12,8 @@ build/
 .env.prod
 .env.production
 .env.prod.*
+# wrangler's local dev state (miniflare cache, temp bundles) — machine-local
+.wrangler/
 coverage/
 playwright-report/
 test-results/
