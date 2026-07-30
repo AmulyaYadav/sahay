@@ -144,6 +144,41 @@ and a `connect-src` naming your API and its `wss://` origin — Caddy does this 
 the compose path, but Pages has no proxy) and `dist/_redirects` (SPA fallback, so
 reloading `/admin` does not 404).
 
+## 4b. Using your own domain
+
+The steps above give you `<project>.pages.dev` and a Northflank subdomain, which
+work fine. With a domain of your own — say `sahay.online` — the split-origin
+layout becomes tidy: the site on the apex, the API on a subdomain.
+
+**Move DNS to Cloudflare first** (free, and it is not the same thing as buying a
+domain from them). At your registrar, change the nameservers to the pair
+Cloudflare gives you when you add the site. This matters for one technical
+reason: the apex of a domain cannot hold a CNAME, and Cloudflare's CNAME
+flattening is what lets `sahay.online` point at Pages at all. Without it you are
+stuck putting the site on `www.`
+
+Then:
+
+| Host | Type | Points at | Set where |
+|---|---|---|---|
+| `sahay.online` | CNAME (flattened) | `<project>.pages.dev` | Pages → Custom domains adds this for you |
+| `api.sahay.online` | CNAME | your Northflank service domain | Cloudflare DNS, and add the domain in Northflank so it provisions a cert |
+
+Leave `api` **grey-clouded (DNS only)** to begin with. Proxying it through
+Cloudflare works, but it changes what the server sees as the client address, and
+the per-IP rate limits on login and OTP depend on that — get the deployment
+working first, then turn the proxy on deliberately and re-check.
+
+Update the two settings that must agree, and redeploy both:
+
+```
+WEB_ORIGIN=https://sahay.online          # Northflank, both services
+VITE_API_URL=https://api.sahay.online    # Cloudflare Pages build env
+```
+
+`VITE_API_URL` is compiled into the bundle *and* into the CSP, so Pages needs a
+fresh build after changing it — not just a redeploy of the existing artifact.
+
 ## 5. Close the loop
 
 1. Set `WEB_ORIGIN` on both Northflank services to the Pages URL and redeploy.
