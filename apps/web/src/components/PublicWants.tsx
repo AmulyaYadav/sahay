@@ -1,4 +1,4 @@
-import type { PublicWant } from '@sahay/shared';
+import { categoryDisplayName, type PublicWant } from '@sahay/shared';
 import { useCatalogue } from '../api/hooks';
 import { useLocale } from '../i18n/LocaleContext';
 import { Badge, SkeletonCard } from '../ui/components';
@@ -19,13 +19,13 @@ export function PublicWants({ wants }: { wants: PublicWant[] }) {
       {wants.map((w) => {
         const cat = bySlug.get(w.categorySlug);
         if (!cat) return null;
-        const catName = cat.name[locale] ?? cat.name.en ?? cat.slug;
         // Both sources can carry a number now: aggregated demand for 'user',
         // the organiser's declared target for 'admin'.
         const hasQty = typeof w.requestedQty === 'number' && w.requestedQty > 0;
-        const label = hasQty
-          ? t('eventPage.wantQtyNeeded', { qty: Math.round(w.requestedQty as number), category: catName })
-          : catName;
+        const qty = hasQty ? Math.round(w.requestedQty as number) : null;
+        // "40 torches needed", but "1 torch needed".
+        const catName = categoryDisplayName(cat, locale, qty);
+        const label = hasQty ? t('eventPage.wantQtyNeeded', { qty: qty as number, category: catName }) : catName;
         return (
           <span key={w.categorySlug} className="chip" style={{ alignItems: 'center', gap: 'var(--sp-1)' }}>
             <CategoryChip group={cat.group} icon={cat.icon} size="sm" />

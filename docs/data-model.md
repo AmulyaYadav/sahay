@@ -91,7 +91,10 @@ participant-list endpoint exists.
 
 ### categories
 Global supply catalogue (seeded from `packages/shared/src/catalogue-defaults.ts`).
-Localized `name`/`description` jsonb; `unit` + `alt_units`; safety flags
+Localized `name`/`description` jsonb; `name_plural` jsonb is the plural form used
+when a count is shown ("40 torches needed") — NULL means no distinct plural, which
+is correct for already-plural names and mass nouns, and callers fall back to `name`
+via `categoryDisplayName()`. Then `unit` + `alt_units`; safety flags
 (`sealed_required`, `expiry_relevant`, `restricted`, `warning_key`); per-category
 `max_request_qty` / `max_offer_qty`. Creation/enable is checked against
 `PROHIBITED_PATTERNS` (medicines, intoxicants, weapons, fuel, blood/organ) — the

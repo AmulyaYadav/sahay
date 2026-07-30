@@ -37,7 +37,7 @@ and the schemas together, never one alone.
 | GET | `/events/:id/bring` | — → `{suggestions: zBringSuggestion[]}` | member only |
 
 ## Catalogue
-| GET | `/catalogue` | — → `{categories: zCategory[]}` | *public*; active global categories |
+| GET | `/catalogue` | — → `{categories: zCategory[]}` | *public*; active global categories; `namePlural` is absent when a category has no distinct plural |
 
 ## Inventory (member of event)
 | GET | `/events/:id/inventory` | — → `{items: zInventoryItem[]}` | own items |

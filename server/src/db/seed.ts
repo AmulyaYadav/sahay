@@ -17,6 +17,7 @@ export async function seedCatalogue(): Promise<void> {
       slug: seed.slug,
       group: seed.group,
       name: seed.name,
+      namePlural: seed.namePlural ?? null,
       icon: seed.icon,
       unit: seed.unit,
       altUnits: seed.altUnits ?? [],

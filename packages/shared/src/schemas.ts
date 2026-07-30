@@ -237,6 +237,7 @@ export const zCategory = z.object({
   slug: z.string(),
   group: z.enum(CATEGORY_GROUPS),
   name: z.record(zLocale, z.string()), // localized names
+  namePlural: z.record(zLocale, z.string()).optional(), // absent = no distinct plural
   description: z.record(zLocale, z.string()).optional(),
   icon: z.string(), // icon key in the design system
   unit: z.enum(UNITS),

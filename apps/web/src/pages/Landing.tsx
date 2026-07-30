@@ -2,6 +2,7 @@
  * and their top wants, followed by a volunteer-app callout.
  */
 import { useMemo } from 'react';
+import { categoryDisplayName } from '@sahay/shared';
 import { Link } from 'react-router-dom';
 import { useCatalogue, useEvents } from '../api/hooks';
 import { PublicWants } from '../components/PublicWants';
@@ -181,7 +182,7 @@ export function LandingPage() {
                     <div key={slug} className="needs-live-row">
                       <CategoryChip group={cat.group} icon={cat.icon} size="sm" />
                       <div className="needs-live-row-body">
-                        <strong>{cat.name[locale] ?? cat.name.en}</strong>
+                        <strong>{categoryDisplayName(cat, locale, qty)}</strong>
                         <span className={`tier-pill tier-${tier}`}>{t(TIER_LABEL_KEY[tier])}</span>
                       </div>
                       <span className="needs-live-qty">{Math.round(qty)}</span>

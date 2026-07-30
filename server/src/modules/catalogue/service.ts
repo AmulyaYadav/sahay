@@ -19,6 +19,7 @@ export function mapCategory(row: CategoryRow, overrides?: CategoryOverrides): Ca
     slug: row.slug,
     group: row.group as Category['group'],
     name: row.name as Record<Locale, string>,
+    ...(row.namePlural ? { namePlural: row.namePlural as Record<Locale, string> } : {}),
     ...(row.description ? { description: row.description as Record<Locale, string> } : {}),
     icon: row.icon,
     unit: row.unit as Unit,

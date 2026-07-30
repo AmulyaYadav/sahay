@@ -142,6 +142,8 @@ export const categories = pgTable('categories', {
   slug: text('slug').notNull().unique(),
   group: text('group').notNull(),
   name: jsonb('name').$type<Record<string, string>>().notNull(),
+  // Localized plural form; null means "no distinct plural" → fall back to name.
+  namePlural: jsonb('name_plural').$type<Record<string, string>>(),
   description: jsonb('description').$type<Record<string, string>>(),
   icon: text('icon').notNull().default('box'),
   unit: text('unit').notNull(),
