@@ -33,12 +33,15 @@ const zConfig = z.object({
   VAPID_SUBJECT: z.string().optional(),
   WEB_ORIGIN: z.string().default('http://localhost:5173'),
   /**
-   * scrypt cost for staff passwords, as log2(N). Memory per verification is
-   * roughly 128 * 2^this * 8 bytes: 16 → 64 MiB, 15 → 32 MiB, 14 → 16 MiB.
-   * Higher is better, but a small free-tier instance can be pushed into OOM by
-   * a handful of concurrent logins, so this is tunable per deployment. Stored
-   * hashes record the parameters they were made with, so lowering this never
-   * invalidates an existing password (ADR-0013).
+   * scrypt cost for staff passwords, as log2(N). Drives time per verification
+   * (~250ms at 16 on modest hardware) and the memory for one hash
+   * (128 * 2^this * 8 bytes: 16 → 64 MiB, 15 → 32 MiB).
+   *
+   * Lower it on a slow instance to keep logins responsive: hashing is
+   * synchronous, so each one stalls the event loop and delays every other
+   * request. It does NOT need lowering to avoid OOM — see the note in
+   * lib/crypto.ts. Stored hashes record their own parameters, so lowering this
+   * never invalidates an existing password (ADR-0013).
    */
   SCRYPT_COST_LOG2: z.coerce.number().int().min(14).max(20).default(16),
   OFFER_RESPONSE_SECONDS: z.coerce.number().default(45),

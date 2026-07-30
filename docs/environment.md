@@ -56,7 +56,7 @@ carefully when switching providers.
 | Var | Required | Default | Purpose |
 |---|---|---|---|
 | `WEB_ORIGIN` | no | `http://localhost:5173` | Public origin of the SPA — the **only** allowed CORS origin in production, and the base for links in notifications |
-| `SCRYPT_COST_LOG2` | no | `16` | log2(N) for **new** staff password hashes. Memory per verification is `128 × 2^N × 8` B: 16 → 64 MiB, 15 → 32 MiB. Lower it on a small instance; stored hashes carry their own cost, so this never invalidates an existing password (ADR-0013). |
+| `SCRYPT_COST_LOG2` | no | `16` | log2(N) for **new** staff password hashes: ~250ms and 64 MiB per verification at 16, ~125ms and 32 MiB at 15. Hashing is synchronous, so lower it on a slow instance to keep logins from stalling other requests — not to avoid OOM (one hash runs at a time per process). Stored hashes carry their own cost, so this never invalidates an existing password (ADR-0013). |
 | `OFFER_RESPONSE_SECONDS` | no | `45` | Default offer response window; events can override per-row (`events.offer_response_seconds`) |
 | `LOCATION_TTL_MINUTES` | no | `15` | Coarse-location row lifetime; the retention worker purges past this. Raising it weakens a privacy promise — treat as a product decision, not a knob |
 

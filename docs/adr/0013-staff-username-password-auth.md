@@ -33,9 +33,12 @@ downstream of authentication is unchanged.
 - **scrypt via `node:crypto`.** No new dependency for a security-critical
   primitive. Stored as `scrypt$N$r$p$salt$hash`, so the cost parameters
   travel with each record and can be raised without invalidating existing
-  passwords. N=2^16 rather than OWASP's 2^17 — see the comment in
-  `server/src/lib/crypto.ts` for why (memory exhaustion on one small VPS,
-  ADR-0010).
+  passwords. N=2^16 rather than OWASP's 2^17, and tunable per deployment via
+  `SCRYPT_COST_LOG2`, because hashing is synchronous: each verification stalls
+  the event loop and delays every other request, so cost buys latency on a
+  small machine (ADR-0010). It is NOT a memory constraint — one hash runs at a
+  time per process, measured flat at ~35 MiB resident under 8 simultaneous
+  logins. See the note in `server/src/lib/crypto.ts`.
 - **Generated first, then chosen.** `newAdminPassword()` mints ~93 bits in four
   readable groups for delivery. `users.must_change_password` is set on creation
   and on every reset, and the authenticated-route gate

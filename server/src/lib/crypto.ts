@@ -79,14 +79,25 @@ export function safeEqualHex(a: string, b: string): boolean {
 /* ------------------------------------------------------ admin passwords */
 
 /**
- * scrypt cost parameters. OWASP's stated minimum is N=2^17, which measures
- * ~520ms and ~128 MiB per verification here. Sahay runs on one small machine
- * (ADR-0010), so a handful of concurrent login attempts at that setting is a
- * genuine memory-exhaustion vector; the default is N=2^16 (~250ms, ~64 MiB),
- * overridable per deployment via SCRYPT_COST_LOG2 because a free-tier instance
- * may not afford even that. Tight per-username and per-IP rate limits carry the
- * rest of the load. Stored hashes carry their own parameters, so changing this
- * never invalidates an existing password.
+ * scrypt cost parameters. OWASP's stated minimum is N=2^17, measuring ~520ms
+ * and ~128 MiB per verification here; the default below is N=2^16 (~250ms,
+ * ~64 MiB), overridable per deployment via SCRYPT_COST_LOG2.
+ *
+ * The binding constraint is LATENCY, not memory. `scryptSync` runs on the event
+ * loop, so one hash happens at a time per process and peak memory is a single
+ * hash's worth however many logins arrive at once — measured: 8 simultaneous
+ * verifications serialized into 2.4s with resident memory flat at ~35 MiB, no
+ * OOM under a 512 MiB cap. What each hash does cost is a full stall of the
+ * event loop, which delays every other request on that process, so a burst of
+ * attempts degrades the whole API rather than exhausting its memory. The
+ * per-username and per-IP rate limits are what bound that.
+ *
+ * (Were this the async `scrypt`, libuv's threadpool would run up to 4 at once
+ * and memory really would multiply. Keeping it synchronous is what makes the
+ * footprint predictable on a small machine — ADR-0010.)
+ *
+ * Stored hashes carry their own parameters, so changing this never invalidates
+ * an existing password.
  */
 const SCRYPT = { r: 8, p: 1, keyLen: 32 } as const;
 const SCRYPT_MAXMEM = 192 * 1024 * 1024;

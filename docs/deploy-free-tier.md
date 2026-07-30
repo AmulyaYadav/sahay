@@ -98,11 +98,12 @@ Two of those need explaining:
 
 - `DATABASE_POOL_MAX=8` — the default is 20 *per process*, and api + worker
   would be 40 against a free tier that caps connections.
-- `SCRYPT_COST_LOG2=15` — each password verification allocates
-  `128 × 2^N × 8` bytes: 32 MiB at 15, 64 MiB at the default 16. A few
-  concurrent logins at 16 can OOM a small free instance. Stored hashes record
-  their own cost, so this never invalidates an existing password, and you can
-  raise it later on a bigger instance.
+- `SCRYPT_COST_LOG2=15` — halves the time per password check (~125ms vs
+  ~250ms). Hashing is synchronous, so each one stalls the event loop and delays
+  every other request; on a small shared-CPU instance that is worth trading a
+  bit of cost factor for. It is not a memory measure — one hash runs at a time
+  per process. Stored hashes record their own cost, so this never invalidates an
+  existing password and you can raise it later.
 
 **Worker service:** same repo, same Dockerfile, same environment variables, but
 no port and no health check. Override the command:
@@ -183,7 +184,7 @@ violations.
   free has no point-in-time recovery — take manual `pg_dump`s of anything you
   care about.
 - **Supabase pauses after 7 days of no activity**, and needs a manual restore.
-- **A weaker password hash** than the default, as above.
+- **A slightly weaker password hash** than the default, as above.
 - **Rate-limit windows reset if Redis restarts**, and queued jobs are lost with
   it — a delayed offer timeout could be dropped.
 
