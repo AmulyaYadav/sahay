@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { zOtpStart, zOtpVerify, zMe, zEventSummary, zPublicWant, zAdminEventWants } from '../src/schemas.js';
+import { zOtpStart, zOtpVerify, zMe, zEventSummary, zPublicWant, zSetAdminWants } from '../src/schemas.js';
 
 describe('email auth schemas', () => {
   it('zOtpStart requires a valid email, rejects phone-shaped strings', () => {
@@ -38,7 +38,21 @@ describe('public wants schemas', () => {
     expect(zEventSummary.shape).toHaveProperty('wants');
   });
 
-  it('zAdminEventWants accepts a list of category slugs', () => {
-    expect(zAdminEventWants.safeParse({ categorySlugs: ['water-bottle', 'blanket'] }).success).toBe(true);
+  it('zSetAdminWants accepts wants with and without a quantity', () => {
+    const parsed = zSetAdminWants.safeParse({
+      wants: [
+        { categorySlug: 'water-bottle', qty: 500 },
+        { categorySlug: 'blanket', qty: null }, // needed, amount unspecified
+      ],
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it('zSetAdminWants rejects zero and negative quantities', () => {
+    // A want of zero is not a declaration anyone can act on; omitting the
+    // category says "not needed" and null says "amount unspecified".
+    expect(zSetAdminWants.safeParse({ wants: [{ categorySlug: 'blanket', qty: 0 }] }).success).toBe(false);
+    expect(zSetAdminWants.safeParse({ wants: [{ categorySlug: 'blanket', qty: -5 }] }).success).toBe(false);
+    expect(zSetAdminWants.safeParse({ wants: [{ categorySlug: 'blanket', qty: 2.5 }] }).success).toBe(false);
   });
 });

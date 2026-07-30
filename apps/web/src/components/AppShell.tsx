@@ -89,6 +89,10 @@ export function RequireModerator({ children }: { children: ReactNode }) {
   const me = useMe();
   if (!getToken()) return <Navigate to="/auth?next=%2Fadmin" replace />;
   if (me.isLoading) return <p className="text-soft">{t('common.loading')}</p>;
+  // Accounts still holding a password we generated get one destination until
+  // they replace it. The server enforces this too (PASSWORD_CHANGE_EXEMPT), so
+  // this redirect is for a coherent UI, not for the security property.
+  if (me.data?.mustChangePassword) return <Navigate to="/auth/password" replace />;
   if (me.data && me.data.role !== 'moderator' && me.data.role !== 'admin') {
     return (
       <div className="empty-state" role="alert">

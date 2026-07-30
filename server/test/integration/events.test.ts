@@ -102,7 +102,7 @@ describe('POST /events', () => {
       method: 'PATCH',
       url: `/api/v1/admin/events/${event.id}/wants`,
       headers: admin.headers,
-      payload: { categorySlugs: slugs },
+      payload: { wants: slugs.map((slug) => ({ categorySlug: slug, qty: null })) },
     });
     expect(setRes.statusCode).toBe(200);
 

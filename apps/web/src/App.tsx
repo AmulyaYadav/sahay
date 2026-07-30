@@ -7,6 +7,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { LocaleProvider } from './i18n/LocaleContext';
 import { AdminPage } from './pages/admin/AdminPage';
 import { AuthPage } from './pages/Auth';
+import { ChangePasswordPage } from './pages/ChangePassword';
 import { CreateEventPage } from './pages/CreateEvent';
 import { EventPage } from './pages/EventPage';
 import { LandingPage } from './pages/Landing';
@@ -51,6 +52,7 @@ export function App() {
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/support" element={<SupportPage />} />
                   <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/auth/password" element={<ChangePasswordPage />} />
                   <Route path="/events/:idOrCode" element={<EventPage />} />
                   <Route
                     path="/admin"

@@ -15,6 +15,7 @@ export type ErrorCode =
   | 'offer_expired'
   | 'prohibited_category'
   | 'account_restricted'
+  | 'password_change_required'
   | 'idempotency_replay';
 
 const STATUS: Record<ErrorCode, number> = {
@@ -30,6 +31,7 @@ const STATUS: Record<ErrorCode, number> = {
   offer_expired: 410,
   prohibited_category: 422,
   account_restricted: 403,
+  password_change_required: 403,
   idempotency_replay: 409,
 };
 
@@ -59,4 +61,5 @@ export const errors = {
   offerExpired: () => new AppError('offer_expired'),
   prohibitedCategory: () => new AppError('prohibited_category'),
   accountRestricted: () => new AppError('account_restricted'),
+  passwordChangeRequired: () => new AppError('password_change_required'),
 };

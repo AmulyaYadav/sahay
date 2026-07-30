@@ -6,7 +6,7 @@
  * follow, sorted by total requested quantity.
  */
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
-import type { PublicWant } from '@sahay/shared';
+import type { AdminWant, PublicWant } from '@sahay/shared';
 import { getDb } from '../../db/index.js';
 import { schema } from '../../db/index.js';
 import { errors } from '../../lib/errors.js';
@@ -21,6 +21,7 @@ export async function computePublicWants(eventIds: string[]): Promise<Map<string
     .select({
       eventId: schema.eventAdminWants.eventId,
       slug: schema.categories.slug,
+      qty: schema.eventAdminWants.qty,
     })
     .from(schema.eventAdminWants)
     .innerJoin(schema.categories, eq(schema.categories.id, schema.eventAdminWants.categoryId))
@@ -48,7 +49,14 @@ export async function computePublicWants(eventIds: string[]): Promise<Map<string
     const adminSlugs = new Set(adminRows.filter((r) => r.eventId === eventId).map((r) => r.slug));
     const admin: PublicWant[] = adminRows
       .filter((r) => r.eventId === eventId)
-      .map((r) => ({ categorySlug: r.slug, source: 'admin' as const, requestedQty: null, requesterCount: null }));
+      .map((r) => ({
+        categorySlug: r.slug,
+        source: 'admin' as const,
+        // The organiser's target, when they gave one. requesterCount stays null:
+        // this number is a declared need, not a count of people who asked.
+        requestedQty: r.qty,
+        requesterCount: null,
+      }));
     const user: PublicWant[] = demandRows
       .filter((r) => r.eventId === eventId && !adminSlugs.has(r.slug))
       .map((r) => ({
@@ -62,28 +70,35 @@ export async function computePublicWants(eventIds: string[]): Promise<Map<string
   return result;
 }
 
-export async function setAdminWants(eventId: string, categorySlugs: string[]): Promise<void> {
+export async function setAdminWants(eventId: string, wants: AdminWant[]): Promise<void> {
   const db = getDb();
+
+  // Last write per slug wins, so a duplicated slug in the payload cannot make
+  // the insert below fail on the (event_id, category_id) primary key.
+  const bySlug = new Map(wants.map((w) => [w.categorySlug, w.qty]));
+
   await db.transaction(async (tx) => {
     await requireEvent(tx, eventId);
 
-    const cats = categorySlugs.length
+    const slugs = [...bySlug.keys()];
+    const cats = slugs.length
       ? await tx
-          .select({ id: schema.categories.id })
+          .select({ id: schema.categories.id, slug: schema.categories.slug })
           .from(schema.categories)
-          .where(inArray(schema.categories.slug, categorySlugs))
+          .where(inArray(schema.categories.slug, slugs))
       : [];
-    if (categorySlugs.length > 0 && cats.length !== new Set(categorySlugs).size) {
-      throw errors.validation({ field: 'categorySlugs' });
+    if (cats.length !== slugs.length) {
+      throw errors.validation({ field: 'wants' });
     }
 
-    // Replace the admin-wants list wholesale — this table has no other
-    // columns to preserve (unlike event_categories), so delete+insert is safe.
+    // Replace the admin-wants list wholesale — this table holds nothing but
+    // the category and its quantity (unlike event_categories), so
+    // delete+insert loses no state.
     await tx.delete(schema.eventAdminWants).where(eq(schema.eventAdminWants.eventId, eventId));
     if (cats.length > 0) {
       await tx
         .insert(schema.eventAdminWants)
-        .values(cats.map((c) => ({ eventId, categoryId: c.id })));
+        .values(cats.map((c) => ({ eventId, categoryId: c.id, qty: bySlug.get(c.slug) ?? null })));
     }
   });
 }

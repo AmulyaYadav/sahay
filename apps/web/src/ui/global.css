@@ -498,6 +498,61 @@ strong {
   color: var(--c-error-text);
 }
 
+/* Admin "manage wants" rows: category chip on the left, quantity stepper on
+   the right. The stepper only renders for selected categories, so the row
+   collapses to just the chip when a category is not wanted. */
+/* Inline-flex so rows wrap like the plain chip list they replaced: a category
+   with no quantity takes exactly the space its chip needs, and only selected
+   ones grow to fit the stepper. A row per line would make a 40-category
+   catalogue a very long scroll. */
+.want-row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+}
+.qty-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--touch);
+  height: var(--touch);
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text);
+  font-size: var(--fs-h3);
+  line-height: 1;
+  cursor: pointer;
+}
+.qty-step:hover:not(:disabled) {
+  background: var(--c-primary-tint);
+  border-color: var(--c-primary);
+  color: var(--c-primary);
+}
+.qty-step:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.qty-input {
+  width: 4.5rem;
+  text-align: center;
+  /* Hide the native spinners: the − / + buttons are the affordance here, and
+     two sets of steppers on one field is just noise. */
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
 /* pills: 12/16 medium, 2px 10px, fully rounded, text + tint only */
 .badge {
   display: inline-flex;

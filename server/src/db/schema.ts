@@ -42,6 +42,9 @@ export const users = pgTable('users', {
   username: text('username').unique(),
   passwordHash: text('password_hash'),
   passwordSetAt: ts('password_set_at'),
+  // True while the account still holds a password we generated: the console
+  // routes everything to the change-password screen until it is cleared.
+  mustChangePassword: boolean('must_change_password').notNull().default(false),
   canRequest: boolean('can_request').notNull().default(true),
   canHelp: boolean('can_help').notNull().default(true),
   suspendedUntil: ts('suspended_until'),
@@ -171,6 +174,8 @@ export const eventAdminWants = pgTable(
   {
     eventId: uuid('event_id').notNull().references(() => events.id, { onDelete: 'cascade' }),
     categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+    // Optional target amount. NULL = "needed, amount unspecified".
+    qty: integer('qty'),
   },
   (t) => [primaryKey({ columns: [t.eventId, t.categoryId] })],
 );

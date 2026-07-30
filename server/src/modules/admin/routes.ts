@@ -6,7 +6,7 @@
  */
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminEventWants, zAdminModerate, zCreateAdmin, zUuid } from '@sahay/shared';
+import { EVENT_STATUSES, EVENT_VISIBILITIES, REPORT_STATUSES, zAdminModerate, zCreateAdmin, zSetAdminWants, zUuid } from '@sahay/shared';
 import { asc, eq } from 'drizzle-orm';
 import { getDb, schema } from '../../db/index.js';
 import { errors } from '../../lib/errors.js';
@@ -119,8 +119,8 @@ export function registerAdminRoutes(app: FastifyInstance): void {
   });
 
   app.patch<{ Params: { id: string } }>('/admin/events/:id/wants', admin, async (req) => {
-    const body = zAdminEventWants.parse(req.body);
-    await setAdminWants(zUuid.parse(req.params.id), body.categorySlugs);
+    const body = zSetAdminWants.parse(req.body);
+    await setAdminWants(zUuid.parse(req.params.id), body.wants);
     return { ok: true };
   });
 

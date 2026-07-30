@@ -20,7 +20,9 @@ export function PublicWants({ wants }: { wants: PublicWant[] }) {
         const cat = bySlug.get(w.categorySlug);
         if (!cat) return null;
         const catName = cat.name[locale] ?? cat.name.en ?? cat.slug;
-        const hasQty = w.source === 'user' && typeof w.requestedQty === 'number' && w.requestedQty > 0;
+        // Both sources can carry a number now: aggregated demand for 'user',
+        // the organiser's declared target for 'admin'.
+        const hasQty = typeof w.requestedQty === 'number' && w.requestedQty > 0;
         const label = hasQty
           ? t('eventPage.wantQtyNeeded', { qty: Math.round(w.requestedQty as number), category: catName })
           : catName;

@@ -18,11 +18,13 @@ Honest list, kept current. Users deserve these stated plainly; contributors shou
 - **Email requirement still excludes some users** — one account per address
   (`email_hmac` UNIQUE), so a shared family inbox is a shared account. Assisted /
   organizer-mediated requests are a possible future.
-- **No self-service password reset for staff, and no way to bootstrap the first admin.**
-  Staff credentials are issued by existing admins (ADR-0013). Local dev seeds
-  `demo-admin`; a real deployment has no path to its first account yet — that belongs
-  with the deployment story and is not solved. Lost passwords are reissued by another
-  admin, which also does not revoke the compromised account's live sessions.
+- **No self-service password reset for staff.** Credentials are issued by existing
+  admins, who also reissue lost ones (ADR-0013). The first admin on a deployment comes
+  from `npm run -w server db:bootstrap:admin`. Both paths force a password change at
+  next sign-in, but an admin-initiated reset does NOT revoke the target's live sessions —
+  locking out a compromised staff account needs a suspension or explicit session revoke,
+  not just a reset. Owner-chosen passwords have a 12-character floor and no expiry,
+  history, or complexity rules beyond that.
 - **The platform guarantees nothing.** It is a matchmaker: no delivery promises, no
   vetting of goods beyond category rules and sealed-item guidance, no background checks.
   UX copy must never imply otherwise.

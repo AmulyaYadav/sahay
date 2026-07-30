@@ -4,7 +4,7 @@
  * storage. Neither the email nor the OTP code is ever logged.
  */
 import { randomBytes, randomInt } from 'node:crypto';
-import { and, desc, eq, gt, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, gt, isNull, ne, sql } from 'drizzle-orm';
 import { LIMITS, pseudonymFromIndexes, type AuthSession, type Locale, type Me } from '@sahay/shared';
 import { loadConfig } from '../../config.js';
 import { getDb, schema, type Db, type Tx } from '../../db/index.js';
@@ -49,6 +49,7 @@ export function toMe(user: typeof schema.users.$inferSelect): Me {
     status: user.status as Me['status'],
     emailVerified: user.emailVerifiedAt != null,
     createdAt: user.createdAt.toISOString(),
+    mustChangePassword: user.mustChangePassword,
   };
 }
 
@@ -246,6 +247,55 @@ export async function loginWithPassword(
     expiresAt,
   });
   return { token, expiresAt: expiresAt.toISOString(), user: toMe(user), isNewAccount: false };
+}
+
+/**
+ * Lets a staff member replace their password. Requires the current one, so a
+ * stolen session token alone cannot lock the real owner out. Every OTHER
+ * session is revoked: if the generated password leaked in transit, whoever
+ * used it is signed out by the act of the owner choosing a new one.
+ */
+export async function changeOwnPassword(
+  userId: string,
+  sessionId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true }> {
+  const db = getDb();
+  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+  if (!user?.passwordHash) throw errors.forbidden(); // volunteers have no password to change
+
+  // Bounds how much scrypt work one session can force, and slows an attacker
+  // who holds a token but not the password.
+  const ok = await rateLimit('password:change', userId, 10, 900).catch(() => false);
+  if (!ok) throw errors.rateLimited();
+
+  if (!verifyPassword(currentPassword, user.passwordHash)) throw errors.unauthorized();
+  if (verifyPassword(newPassword, user.passwordHash)) {
+    throw errors.validation({ field: 'newPassword', reason: 'same_as_current' });
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({
+        passwordHash: hashPassword(newPassword),
+        passwordSetAt: new Date(),
+        mustChangePassword: false,
+      })
+      .where(eq(schema.users.id, userId));
+    await tx
+      .update(schema.sessions)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(schema.sessions.userId, userId),
+          ne(schema.sessions.id, sessionId),
+          isNull(schema.sessions.revokedAt),
+        ),
+      );
+  });
+  return { ok: true };
 }
 
 export async function revokeSession(userId: string, sessionId: string): Promise<boolean> {

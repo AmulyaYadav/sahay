@@ -23,7 +23,7 @@ describe('computePublicWants', () => {
     const water = await categoryBySlug('water-bottle');
     const blanket = await categoryBySlug('blanket');
 
-    await setAdminWants(event.id, [blanket.slug]);
+    await setAdminWants(event.id, [{ categorySlug: blanket.slug, qty: null }]);
 
     // A single open request for water — must show up despite only 1 requester.
     const db = getDb();
@@ -54,7 +54,11 @@ describe('computePublicWants', () => {
     const cats = ['water-bottle', 'blanket', 'sanitary-pads', 'diapers', 'bandages'];
     for (const slug of cats) {
       const c = await categoryBySlug(slug);
-      await setAdminWants(event.id, [...(await getAdminWantSlugs(event.id)), c.slug]);
+      const existing = await getAdminWantSlugs(event.id);
+      await setAdminWants(event.id, [
+        ...existing.map((existingSlug) => ({ categorySlug: existingSlug, qty: null })),
+        { categorySlug: c.slug, qty: null },
+      ]);
     }
     const result = await computePublicWants([event.id]);
     expect(result.get(event.id)!.length).toBeGreaterThanOrEqual(5);
@@ -64,7 +68,7 @@ describe('computePublicWants', () => {
     const creator = await makeUser();
     const event = await makeEvent(creator.id);
     const water = await categoryBySlug('water-bottle');
-    await setAdminWants(event.id, [water.slug]);
+    await setAdminWants(event.id, [{ categorySlug: water.slug, qty: null }]);
 
     const requester = await makeUser();
     await getDb().insert(schema.requests).values({
@@ -105,7 +109,7 @@ describe('setAdminWants', () => {
       maxOfferQty: '42',
     });
 
-    await setAdminWants(event.id, [water.slug]);
+    await setAdminWants(event.id, [{ categorySlug: water.slug, qty: null }]);
     let ecRows = await db
       .select()
       .from(schema.eventCategories)
@@ -116,7 +120,7 @@ describe('setAdminWants', () => {
     expect(waterRow.enabled).toBe(true);
     expect(await getAdminWantSlugs(event.id)).toEqual([water.slug]);
 
-    await setAdminWants(event.id, [blanket.slug]);
+    await setAdminWants(event.id, [{ categorySlug: blanket.slug, qty: null }]);
     ecRows = await db.select().from(schema.eventCategories).where(eq(schema.eventCategories.eventId, event.id));
     waterRow = ecRows.find((r) => r.categoryId === water.id)!;
     expect(waterRow.maxRequestQty).toBe('7');
@@ -135,10 +139,78 @@ describe('setAdminWants', () => {
     expect(before.length).toBeGreaterThan(1); // sanity: several active global categories
 
     const blanket = await categoryBySlug('blanket');
-    await setAdminWants(event.id, [blanket.slug]);
+    await setAdminWants(event.id, [{ categorySlug: blanket.slug, qty: null }]);
 
     const after = await effectiveEventCategories(event.id);
     expect(after.length).toBe(before.length); // still ALL active globals, not just the declared want
+  });
+
+  it('stores a declared quantity and surfaces it as requestedQty on the public want', async () => {
+    const creator = await makeUser();
+    const event = await makeEvent(creator.id);
+    const torch = await categoryBySlug('torch');
+    const blanket = await categoryBySlug('blanket');
+
+    await setAdminWants(event.id, [
+      { categorySlug: torch.slug, qty: 5 },
+      { categorySlug: blanket.slug, qty: null }, // needed, amount unspecified
+    ]);
+
+    const wants = (await computePublicWants([event.id])).get(event.id)!;
+    const torchWant = wants.find((w) => w.categorySlug === torch.slug)!;
+    const blanketWant = wants.find((w) => w.categorySlug === blanket.slug)!;
+
+    expect(torchWant).toMatchObject({ source: 'admin', requestedQty: 5 });
+    expect(blanketWant).toMatchObject({ source: 'admin', requestedQty: null });
+    // requesterCount stays null for admin wants either way: a declared target
+    // is not a count of people who asked.
+    expect(torchWant.requesterCount).toBeNull();
+  });
+
+  it('overwrites a previously declared quantity, including back to unspecified', async () => {
+    const creator = await makeUser();
+    const event = await makeEvent(creator.id);
+    const torch = await categoryBySlug('torch');
+
+    await setAdminWants(event.id, [{ categorySlug: torch.slug, qty: 12 }]);
+    await setAdminWants(event.id, [{ categorySlug: torch.slug, qty: 40 }]);
+    let wants = (await computePublicWants([event.id])).get(event.id)!;
+    expect(wants.find((w) => w.categorySlug === torch.slug)!.requestedQty).toBe(40);
+
+    await setAdminWants(event.id, [{ categorySlug: torch.slug, qty: null }]);
+    wants = (await computePublicWants([event.id])).get(event.id)!;
+    expect(wants.find((w) => w.categorySlug === torch.slug)!.requestedQty).toBeNull();
+  });
+
+  it('takes the last quantity when the same category is sent twice', async () => {
+    // Guards the primary key on (event_id, category_id): a duplicated slug in
+    // one payload must not make the insert fail.
+    const creator = await makeUser();
+    const event = await makeEvent(creator.id);
+    const torch = await categoryBySlug('torch');
+
+    await setAdminWants(event.id, [
+      { categorySlug: torch.slug, qty: 3 },
+      { categorySlug: torch.slug, qty: 9 },
+    ]);
+
+    const wants = (await computePublicWants([event.id])).get(event.id)!;
+    expect(wants.filter((w) => w.categorySlug === torch.slug)).toHaveLength(1);
+    expect(wants[0]!.requestedQty).toBe(9);
+  });
+
+  it('rejects an unknown category slug without writing anything', async () => {
+    const creator = await makeUser();
+    const event = await makeEvent(creator.id);
+    const torch = await categoryBySlug('torch');
+    await setAdminWants(event.id, [{ categorySlug: torch.slug, qty: 5 }]);
+
+    await expect(
+      setAdminWants(event.id, [{ categorySlug: 'not-a-real-category', qty: 1 }]),
+    ).rejects.toMatchObject({ code: 'validation' });
+
+    // The transaction rolled back, so the earlier declaration survives.
+    expect(await getAdminWantSlugs(event.id)).toEqual([torch.slug]);
   });
 
   it('throws not-found for a nonexistent event, before touching any table', async () => {

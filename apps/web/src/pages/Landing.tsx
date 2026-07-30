@@ -35,14 +35,16 @@ export function LandingPage() {
   const events = useEvents({});
   const catalogue = useCatalogue();
 
-  // Client-side aggregate across the events already fetched for this page —
-  // no new backend endpoint. Admin-declared wants (no real quantity) are
-  // excluded; only real summed demand is shown, capped to the top 4.
+  // Client-side aggregate across the events already fetched for this page — no
+  // new backend endpoint. Counts both organiser-declared targets and real
+  // summed demand; computePublicWants makes those mutually exclusive per event
+  // and category, so nothing is counted twice. Wants with no number at all
+  // contribute nothing here. Capped to the top 4.
   const topNeeds = useMemo(() => {
     const byCategory = new Map<string, number>();
     for (const ev of events.data?.items ?? []) {
       for (const w of ev.wants) {
-        if (w.source !== 'user' || !w.requestedQty) continue;
+        if (!w.requestedQty) continue;
         byCategory.set(w.categorySlug, (byCategory.get(w.categorySlug) ?? 0) + w.requestedQty);
       }
     }

@@ -12,6 +12,7 @@ and the schemas together, never one alone.
 | POST | `/auth/otp/start` | `zOtpStart` → `{ok, retryAfterSeconds}` | *public*; rate-limited per email+IP; always 200 (no account enumeration) |
 | POST | `/auth/otp/verify` | `zOtpVerify` → `zAuthSession` | *public*; creates account on first verify |
 | POST | `/auth/login` | `zPasswordLogin` → `zAuthSession` | *public*; staff username+password (ADR-0013); rate-limited per username+IP; one 401 body for unknown user and wrong password alike |
+| POST | `/auth/password` | `zChangePassword` → `{ok}` | own password; requires the current one; revokes every OTHER session; clears `mustChangePassword` |
 | POST | `/auth/logout` | — → `{ok}` | revokes current session |
 | GET | `/auth/sessions` | — → `zSessionInfo[]` | |
 | DELETE | `/auth/sessions/:id` | — → `{ok}` | revoke any of own sessions |
@@ -95,7 +96,7 @@ and the schemas together, never one alone.
 | GET | `/admin/events?status=&pendingApproval=` | mod | event list incl. unlisted |
 | POST | `/admin/events/:id/notice` | mod | `{body, urgent}` → `{ok}` |
 | PATCH | `/admin/events/:id` | admin | event edits incl. status/pause/retention |
-| PATCH | `/admin/events/:id/wants` | admin | `{categorySlugs}` → `{ok}` — replaces the event's admin-declared "current wants" |
+| PATCH | `/admin/events/:id/wants` | admin | `zSetAdminWants` → `{ok}` — replaces the event's admin-declared "current wants"; each want may carry a target `qty` (null = amount unspecified) |
 | GET/PATCH | `/admin/categories` | admin | full catalogue management (denylist enforced) |
 | GET/PATCH | `/admin/flags` | admin | feature flags |
 | GET | `/admin/appeals` / POST `/admin/appeals/:id/resolve` | admin |

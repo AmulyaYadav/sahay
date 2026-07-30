@@ -217,3 +217,151 @@ describe('staff password reset', () => {
     expect(res.statusCode).toBe(404);
   });
 });
+
+describe('forced first password change', () => {
+  /** Creates a staff account and signs in with the generated password. */
+  async function freshStaff(username = 'newbie.staff') {
+    const { creator, res } = await createAdmin({ username });
+    const generated = res.json().password;
+    const session = await login(username, generated);
+    return { creator, generated, token: session.json().token as string, id: res.json().id as string };
+  }
+
+  it('flags a newly created account and says so on the session and /me', async () => {
+    const { res } = await createAdmin({ username: 'flagged.one' });
+    const session = await login('flagged.one', res.json().password);
+    expect(session.json().user.mustChangePassword).toBe(true);
+
+    const me = await app.inject({ url: '/api/v1/me', headers: authHeaders(session.json().token) });
+    expect(me.json().mustChangePassword).toBe(true);
+  });
+
+  it('blocks every other route until the password is changed', async () => {
+    const { token } = await freshStaff();
+    const headers = authHeaders(token);
+
+    // The whole point: the password WE generated cannot be used to actually do
+    // anything, so a leak in transit has a bounded blast radius. Every
+    // AUTHENTICATED route is closed — public routes are unaffected, since they
+    // serve the same data to anyone with or without a token.
+    for (const url of ['/api/v1/admin/events', '/api/v1/admin/stats', '/api/v1/auth/sessions']) {
+      const res = await app.inject({ url, headers });
+      expect(res.statusCode, url).toBe(403);
+      expect(res.json().error.code, url).toBe('password_change_required');
+    }
+
+    const publicRoute = await app.inject({ url: '/api/v1/events', headers });
+    expect(publicRoute.statusCode).toBe(200);
+  });
+
+  it('still allows the routes needed to complete the change', async () => {
+    const { token } = await freshStaff();
+    const headers = authHeaders(token);
+    expect((await app.inject({ url: '/api/v1/me', headers })).statusCode).toBe(200);
+  });
+
+  it('clears the flag, unblocks the console, and retires the old password', async () => {
+    const { generated, token } = await freshStaff();
+    const headers = authHeaders(token);
+
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers,
+      payload: { currentPassword: generated, newPassword: 'a-password-i-picked-myself' },
+    });
+    expect(change.statusCode).toBe(200);
+
+    // Same session, now unblocked — no re-login required.
+    expect((await app.inject({ url: '/api/v1/admin/events', headers })).statusCode).toBe(200);
+    const me = await app.inject({ url: '/api/v1/me', headers });
+    expect(me.json().mustChangePassword).toBe(false);
+
+    expect((await login('newbie.staff', generated)).statusCode).toBe(401);
+    const relogin = await login('newbie.staff', 'a-password-i-picked-myself');
+    expect(relogin.statusCode).toBe(200);
+    expect(relogin.json().user.mustChangePassword).toBe(false);
+  });
+
+  it('revokes other sessions but keeps the one doing the changing', async () => {
+    const { generated, token } = await freshStaff();
+    const other = await login('newbie.staff', generated);
+    const otherToken = other.json().token;
+
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: authHeaders(token),
+      payload: { currentPassword: generated, newPassword: 'another-fresh-password' },
+    });
+    expect(change.statusCode).toBe(200);
+
+    // Whoever else was holding the delivered password is signed out by this.
+    expect((await app.inject({ url: '/api/v1/me', headers: authHeaders(otherToken) })).statusCode).toBe(401);
+    expect((await app.inject({ url: '/api/v1/me', headers: authHeaders(token) })).statusCode).toBe(200);
+  });
+
+  it('requires the current password, so a stolen token alone cannot take over', async () => {
+    const { token } = await freshStaff();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: authHeaders(token),
+      payload: { currentPassword: 'not-the-right-one', newPassword: 'a-brand-new-password' },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('rejects reusing the same password, and anything under 12 characters', async () => {
+    const { generated, token } = await freshStaff();
+    const headers = authHeaders(token);
+
+    const same = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers,
+      payload: { currentPassword: generated, newPassword: generated },
+    });
+    expect(same.statusCode).toBe(400);
+
+    const short = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers,
+      payload: { currentPassword: generated, newPassword: 'short' },
+    });
+    expect(short.statusCode).toBe(400);
+
+    // Still blocked — neither failed attempt cleared the flag.
+    expect((await app.inject({ url: '/api/v1/admin/events', headers })).statusCode).toBe(403);
+  });
+
+  it('re-flags the account when an admin resets the password', async () => {
+    const { generated, token, creator, id } = await freshStaff();
+    await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: authHeaders(token),
+      payload: { currentPassword: generated, newPassword: 'chosen-by-the-owner' },
+    });
+
+    const reset = await app.inject({
+      method: 'POST',
+      url: `/api/v1/admin/admins/${id}/reset-password`,
+      headers: creator.headers,
+    });
+    const session = await login('newbie.staff', reset.json().password);
+    expect(session.json().user.mustChangePassword).toBe(true);
+  });
+
+  it('refuses to change a password for a volunteer, who has none', async () => {
+    const volunteer = await makeAuthedUser();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: volunteer.headers,
+      payload: { currentPassword: 'whatever', newPassword: 'a-perfectly-fine-password' },
+    });
+    expect(res.statusCode).toBe(403);
+  });
+});

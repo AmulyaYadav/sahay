@@ -531,21 +531,23 @@ describe('read surfaces', () => {
       method: 'PATCH',
       url: `/api/v1/admin/events/${event.id}/wants`,
       headers: admin.headers,
-      payload: { categorySlugs: [water.slug] },
+      payload: { wants: [{ categorySlug: water.slug, qty: 250 }] },
     });
     expect(res.statusCode).toBe(200);
 
     const detail = await app.inject({ url: `/api/v1/events/${event.code}` });
+    // The declared amount rides along as requestedQty, so the public page can
+    // say "250 water bottles needed" rather than only naming the category.
     expect(detail.json().wants).toEqual([
-      expect.objectContaining({ categorySlug: water.slug, source: 'admin' }),
+      expect.objectContaining({ categorySlug: water.slug, source: 'admin', requestedQty: 250 }),
     ]);
 
-    // GET /admin/events must carry the same admin-declared want slugs, so the
+    // GET /admin/events must carry the same wants AND their quantities, so the
     // wants-management UI can prefill its dialog without an extra round-trip.
     const list = await app.inject({ url: '/api/v1/admin/events', headers: admin.headers });
     expect(list.statusCode).toBe(200);
     const row = list.json().items.find((it: { id: string }) => it.id === event.id);
-    expect(row.adminWantSlugs).toEqual([water.slug]);
+    expect(row.adminWants).toEqual([{ categorySlug: water.slug, qty: 250 }]);
   });
 
   it('PATCH /admin/events/:id/wants is rejected for a moderator (admin-tier only)', async () => {

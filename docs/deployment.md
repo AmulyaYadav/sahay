@@ -61,6 +61,26 @@ docker compose up -d api worker
 Verify: `curl -fsS https://<host>/readyz`, tail api/worker logs for one clean minute,
 confirm retention jobs ticking (worker log), send a console/staging OTP round-trip.
 
+### First admin account (once per deployment)
+
+Staff accounts are minted by existing admins (ADR-0013), so a fresh database has nobody
+who can create the first one. This command is that path. It is idempotent — an existing
+username is a no-op that still exits 0 — so it is safe to leave in a deploy script.
+
+```bash
+docker compose run --rm \
+  -e BOOTSTRAP_ADMIN_USERNAME=<username> \
+  -e BOOTSTRAP_ADMIN_EMAIL=<email> \
+  api npm run db:bootstrap:admin -w server
+```
+
+It prints a generated password **once** — capture it from that output, since only the
+scrypt hash is stored. Set `BOOTSTRAP_ADMIN_PASSWORD` instead if the output is not
+somewhere you can read back (minimum 12 characters). Either way the account is created
+with `must_change_password`, so the printed password only survives until first sign-in;
+the owner is forced to choose their own before the console will do anything, and that
+change revokes any other session. Grant `BOOTSTRAP_ADMIN_ROLE=moderator` for a non-admin.
+
 ## Migration safety rules
 
 Migrations are hand-written SQL applied in filename order, each in its own transaction,

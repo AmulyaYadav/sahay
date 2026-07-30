@@ -5,6 +5,7 @@
 import { useMutation, useQuery, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import type {
   AdminCreated,
+  AdminWant,
   AuthSession,
   Category,
   EventDashboard,
@@ -60,6 +61,26 @@ export function usePasswordLogin() {
       api<AuthSession>('/auth/login', {
         body: { ...body, device: { platform: 'web', name: navigator.userAgent.slice(0, 60) } },
       }),
+  });
+}
+
+/**
+ * Replaces the caller's own password. Revokes every other session server-side,
+ * so the generated password we mailed out stops working once this succeeds.
+ */
+export function useChangePassword() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { currentPassword: string; newPassword: string }) =>
+      api<{ ok: boolean }>('/auth/password', { body }),
+    onSuccess: () => {
+      // Write the cleared flag straight into the cache rather than waiting for
+      // a refetch: callers navigate immediately on success, and RequireModerator
+      // reads this value synchronously — a stale `true` bounces them right back
+      // to the change-password screen they just completed.
+      qc.setQueryData<Me>(['me'], (prev) => (prev ? { ...prev, mustChangePassword: false } : prev));
+      void qc.invalidateQueries({ queryKey: ['me'] });
+    },
   });
 }
 
@@ -190,8 +211,8 @@ export interface AdminEventRow extends EventSummary {
   matchingPaused?: boolean;
   /** Server field: false = a public listing still awaiting approval. */
   publicApproved?: boolean;
-  /** Category slugs currently declared as admin wants for this event. */
-  adminWantSlugs?: string[];
+  /** Wants currently declared for this event, with optional target quantities. */
+  adminWants?: AdminWant[];
 }
 
 export function useAdminEvents(params: { status?: string; pendingApproval?: boolean }) {
@@ -233,8 +254,8 @@ export function useResetAdminPassword() {
 export function useAdminSetWants(eventId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (categorySlugs: string[]) =>
-      api<{ ok: boolean }>(`/admin/events/${eventId}/wants`, { method: 'PATCH', body: { categorySlugs } }),
+    mutationFn: (wants: AdminWant[]) =>
+      api<{ ok: boolean }>(`/admin/events/${eventId}/wants`, { method: 'PATCH', body: { wants } }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['event', eventId] });
       void qc.invalidateQueries({ queryKey: ['adminEvents'] });

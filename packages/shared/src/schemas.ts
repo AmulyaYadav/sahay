@@ -96,6 +96,11 @@ export const zCreateAdmin = z.object({
   role: z.enum(['moderator', 'admin']).default('moderator'),
 });
 
+export const zChangePassword = z.object({
+  currentPassword: z.string().min(1).max(200),
+  newPassword: z.string().min(12).max(200),
+});
+
 export const zAuthSession = z.object({
   token: z.string(), // opaque bearer; store securely, never log
   expiresAt: zIsoDate,
@@ -115,6 +120,9 @@ export const zMe = z.object({
   status: z.enum(USER_STATUSES),
   emailVerified: z.boolean(),
   createdAt: zIsoDate,
+  // Staff only: true while the account still holds a password we generated.
+  // The console blocks on the change-password screen until this is false.
+  mustChangePassword: z.boolean(),
 });
 export type Me = z.infer<typeof zMe>;
 
@@ -148,10 +156,23 @@ export const zSessionInfo = z.object({
 export const zPublicWant = z.object({
   categorySlug: z.string(),
   source: z.enum(['admin', 'user']),
-  requestedQty: z.number().nullable(), // null when source is 'admin' and no real demand exists yet
+  // For 'user', the summed outstanding request quantity. For 'admin', the
+  // target the organiser typed, or null if they left it unspecified.
+  requestedQty: z.number().nullable(),
   requesterCount: z.number().int().nullable(), // null when source is 'admin'
 });
 export type PublicWant = z.infer<typeof zPublicWant>;
+
+/** One admin-declared want. `qty` null means "needed, amount unspecified". */
+export const zAdminWant = z.object({
+  categorySlug: z.string().min(1),
+  qty: z.number().int().positive().max(1_000_000).nullable(),
+});
+export type AdminWant = z.infer<typeof zAdminWant>;
+
+export const zSetAdminWants = z.object({
+  wants: z.array(zAdminWant).max(200),
+});
 
 export const zEventSummary = z.object({
   id: zUuid,
@@ -208,11 +229,6 @@ export const zEventSearch = zPagination.extend({
   near: zCoords.optional(), // client sends coarse coords voluntarily for "nearby"
   type: z.enum(EVENT_TYPES).optional(),
 });
-
-export const zAdminEventWants = z.object({
-  categorySlugs: z.array(z.string()).max(50),
-});
-export type AdminEventWantsInput = z.infer<typeof zAdminEventWants>;
 
 /* --------------------------------------------------------------- catalogue */
 

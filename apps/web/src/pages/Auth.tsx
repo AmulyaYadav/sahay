@@ -39,7 +39,9 @@ export function AuthPage() {
         onSuccess: (session) => {
           setToken(session.token);
           qc.setQueryData(['me'], session.user);
-          navigate(dest, { replace: true });
+          // A password we generated has to be replaced before anything else —
+          // the server refuses every other route until it is.
+          navigate(session.user.mustChangePassword ? '/auth/password' : dest, { replace: true });
         },
         onError: (err) => {
           if (err instanceof ApiClientError) {

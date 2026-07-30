@@ -5,13 +5,14 @@
  * (4) notifies affected users via 'moderation_outcome' where applicable.
  * Admins never see phone data anywhere on this surface.
  */
-import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { z } from 'zod';
 import {
   MODERATION_ACTIONS,
   PROHIBITED_PATTERNS,
   type AdminCreated,
+  type AdminWant,
   type ModerationActionKind,
   type zAdminModerate,
   type zAdminReportView,
@@ -439,15 +440,20 @@ export async function listAdminEvents(filters: { status?: string; pendingApprova
   const eventIds = rows.map((r) => r.event.id);
   const wantRows = eventIds.length
     ? await db
-        .select({ eventId: schema.eventAdminWants.eventId, slug: schema.categories.slug })
+        .select({
+          eventId: schema.eventAdminWants.eventId,
+          slug: schema.categories.slug,
+          qty: schema.eventAdminWants.qty,
+        })
         .from(schema.eventAdminWants)
         .innerJoin(schema.categories, eq(schema.categories.id, schema.eventAdminWants.categoryId))
         .where(inArray(schema.eventAdminWants.eventId, eventIds))
+        .orderBy(asc(schema.categories.sortOrder))
     : [];
-  const wantsByEvent = new Map<string, string[]>();
+  const wantsByEvent = new Map<string, AdminWant[]>();
   for (const w of wantRows) {
     const list = wantsByEvent.get(w.eventId) ?? [];
-    list.push(w.slug);
+    list.push({ categorySlug: w.slug, qty: w.qty });
     wantsByEvent.set(w.eventId, list);
   }
 
@@ -464,7 +470,7 @@ export async function listAdminEvents(filters: { status?: string; pendingApprova
     endsAt: r.event.endsAt.toISOString(),
     createdBy: r.createdByPseudonym,
     createdAt: r.event.createdAt.toISOString(),
-    adminWantSlugs: wantsByEvent.get(r.event.id) ?? [],
+    adminWants: wantsByEvent.get(r.event.id) ?? [],
   }));
 }
 
@@ -565,6 +571,9 @@ export async function createAdminAccount(
         username,
         passwordHash: hashPassword(password),
         passwordSetAt: new Date(),
+        // We generated this password and will send it over a channel we do not
+        // control; the console makes them replace it before anything else.
+        mustChangePassword: true,
         emailEnc: encryptPii(input.email),
         emailHmac,
         emailVerifiedAt: new Date(),
@@ -585,7 +594,7 @@ export async function resetAdminPassword(actorId: string, userId: string): Promi
   const password = newAdminPassword();
   const rows = await db
     .update(schema.users)
-    .set({ passwordHash: hashPassword(password), passwordSetAt: new Date() })
+    .set({ passwordHash: hashPassword(password), passwordSetAt: new Date(), mustChangePassword: true })
     .where(and(eq(schema.users.id, userId), isNotNull(schema.users.username)))
     .returning({ id: schema.users.id });
   if (rows.length === 0) throw errors.notFound();

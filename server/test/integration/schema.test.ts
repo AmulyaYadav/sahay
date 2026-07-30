@@ -40,12 +40,41 @@ describe('0004_event_admin_wants migration', () => {
       WHERE table_name = 'event_admin_wants'
       ORDER BY column_name
     `);
-    expect(table.rows.map((r) => r.column_name).sort()).toEqual(['category_id', 'event_id']);
+    // qty arrives in 0006 — see the migration test below.
+    expect(table.rows.map((r) => r.column_name).sort()).toEqual(['category_id', 'event_id', 'qty']);
 
     const dropped = await db.execute(sql`
       SELECT column_name FROM information_schema.columns
       WHERE table_name = 'event_categories' AND column_name = 'admin_want'
     `);
     expect(dropped.rows).toHaveLength(0);
+  });
+});
+
+describe('0006_password_change_and_want_qty migration', () => {
+  it('adds must_change_password to users, defaulting to false for existing rows', async () => {
+    const db = getDb();
+    const col = await db.execute(sql`
+      SELECT is_nullable, column_default FROM information_schema.columns
+      WHERE table_name = 'users' AND column_name = 'must_change_password'
+    `);
+    expect(col.rows).toHaveLength(1);
+    // NOT NULL with a false default: staff who already had working passwords
+    // when this shipped are not locked out of the console.
+    expect(col.rows[0]!.is_nullable).toBe('NO');
+    expect(String(col.rows[0]!.column_default)).toContain('false');
+  });
+
+  it('constrains admin want quantities to a sane positive range', async () => {
+    const db = getDb();
+    const check = await db.execute(sql`
+      SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint
+      WHERE conname = 'event_admin_wants_qty_sane'
+    `);
+    expect(check.rows).toHaveLength(1);
+    const def = String(check.rows[0]!.def);
+    // NULL stays legal — it means "needed, amount unspecified".
+    expect(def).toContain('IS NULL');
+    expect(def).toContain('> 0');
   });
 });

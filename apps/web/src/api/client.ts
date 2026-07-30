@@ -3,7 +3,8 @@
  * - base URL: VITE_API_URL (default http://localhost:4000) + /api/v1
  * - bearer token from localStorage('sahay.token')
  * - non-2xx parsed via the zApiError envelope into ApiClientError
- * - 401 clears the token and redirects to /auth (with ?next=)
+ * - 401 clears the token and redirects to /auth (with ?next=), except on the
+ *   routes where 401 means "wrong credentials" rather than "session expired"
  */
 import { zApiError } from '@sahay/shared';
 
@@ -102,7 +103,11 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   }
   emitNet(true);
 
-  if (res.status === 401 && !path.startsWith('/auth/otp')) {
+  // On these routes a 401 is a credential answer, not an expired session:
+  // /auth/otp/* is a wrong code, /auth/password is a wrong current password.
+  // Redirecting would sign the caller out for a typo and swallow the message.
+  const authAnswers401 = path.startsWith('/auth/otp') || path === '/auth/password';
+  if (res.status === 401 && !authAnswers401) {
     redirectToAuth();
     throw new ApiClientError('unauthorized', 'Session expired', 401);
   }

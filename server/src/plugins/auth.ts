@@ -18,6 +18,7 @@ export interface AuthContext {
   pseudonym: string;
   canRequest: boolean;
   canHelp: boolean;
+  mustChangePassword: boolean;
 }
 
 declare module 'fastify' {
@@ -42,6 +43,7 @@ export async function resolveAuth(token: string): Promise<AuthContext | null> {
       pseudonym: schema.users.pseudonym,
       canRequest: schema.users.canRequest,
       canHelp: schema.users.canHelp,
+      mustChangePassword: schema.users.mustChangePassword,
       suspendedUntil: schema.users.suspendedUntil,
     })
     .from(schema.sessions)
@@ -69,8 +71,22 @@ export async function resolveAuth(token: string): Promise<AuthContext | null> {
     pseudonym: row.pseudonym,
     canRequest: row.canRequest,
     canHelp: row.canHelp,
+    mustChangePassword: row.mustChangePassword,
   };
 }
+
+/**
+ * Routes still reachable while a staff account owes us a password change.
+ * Everything needed to complete the change and nothing else: read who you are,
+ * set the new password, or leave. Enforced server-side rather than only in the
+ * console, so skipping the screen in the client does not skip the requirement —
+ * the whole point is that the password WE generated stops working.
+ */
+const PASSWORD_CHANGE_EXEMPT: ReadonlySet<string> = new Set([
+  '/api/v1/auth/password',
+  '/api/v1/auth/logout',
+  '/api/v1/me',
+]);
 
 export function registerAuth(app: FastifyInstance): void {
   app.decorateRequest('auth', null);
@@ -82,6 +98,9 @@ export function registerAuth(app: FastifyInstance): void {
     const auth = await resolveAuth(token);
     if (!auth) throw errors.unauthorized();
     if (auth.status === 'suspended') throw errors.accountRestricted();
+    if (auth.mustChangePassword && !PASSWORD_CHANGE_EXEMPT.has(req.routeOptions.url ?? '')) {
+      throw errors.passwordChangeRequired();
+    }
     req.auth = auth;
     // Touch last_seen at most once a minute per session (fire and forget).
     void getDb()

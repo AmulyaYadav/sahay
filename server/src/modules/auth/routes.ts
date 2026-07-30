@@ -1,8 +1,15 @@
 import type { FastifyInstance } from 'fastify';
-import { zOtpStart, zOtpVerify, zPasswordLogin, zUuid } from '@sahay/shared';
+import { zChangePassword, zOtpStart, zOtpVerify, zPasswordLogin, zUuid } from '@sahay/shared';
 import { errors } from '../../lib/errors.js';
 import { publishToUser } from '../../realtime/hub.js';
-import { listSessions, loginWithPassword, revokeSession, startOtp, verifyOtp } from './service.js';
+import {
+  changeOwnPassword,
+  listSessions,
+  loginWithPassword,
+  revokeSession,
+  startOtp,
+  verifyOtp,
+} from './service.js';
 
 export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/otp/start', async (req) => {
@@ -19,6 +26,13 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/login', async (req) => {
     const body = zPasswordLogin.parse(req.body);
     return loginWithPassword(body.username, body.password, body.device, req.ip);
+  });
+
+  // Reachable while must_change_password is set — see PASSWORD_CHANGE_EXEMPT.
+  app.post('/auth/password', { preHandler: [app.authenticate] }, async (req) => {
+    const body = zChangePassword.parse(req.body);
+    const auth = req.auth!;
+    return changeOwnPassword(auth.userId, auth.sessionId, body.currentPassword, body.newPassword);
   });
 
   app.post('/auth/logout', { preHandler: [app.authenticate] }, async (req) => {

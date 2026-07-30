@@ -126,8 +126,6 @@ export async function loginViaApi(request: APIRequestContext, email: string): Pr
   return { token: session.token, user: session.user };
 }
 
-/** Full UI login: /auth → email → fixed OTP → lands on /admin (the only
- * authenticated destination Auth.tsx's `dest` resolves to without a `next`). */
 /**
  * Issues staff credentials for an existing admin through the real
  * POST /admin/admins endpoint. The web console is username+password only
@@ -146,13 +144,31 @@ export async function issueStaffCredentials(
   return { username: created.username, password: created.password };
 }
 
-/** Full UI sign-in through the admin console's username + password form. */
-export async function loginViaUi(page: Page, username: string, password: string): Promise<void> {
+/**
+ * Full UI sign-in through the admin console's username + password form, ending
+ * on /admin.
+ *
+ * Freshly issued staff credentials carry `mustChangePassword` (ADR-0013), so
+ * the console sends them to /auth/password first. This walks that screen too
+ * and returns whatever password is live afterwards — callers that sign in again
+ * later must use the returned value, not the one they passed in.
+ */
+export async function loginViaUi(page: Page, username: string, password: string): Promise<string> {
   await page.goto('/auth');
   await page.getByLabel('Username').fill(username);
-  await page.getByLabel('Password').fill(password);
+  await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
+
+  await page.waitForURL(/\/(admin|auth\/password)/);
+  if (!new URL(page.url()).pathname.startsWith('/auth/password')) return password;
+
+  const chosen = `e2e-chosen-${username}-pw`;
+  await page.getByLabel('Current password').fill(password);
+  await page.getByLabel('New password', { exact: true }).fill(chosen);
+  await page.getByLabel('Confirm new password').fill(chosen);
+  await page.getByRole('button', { name: 'Save new password' }).click();
   await page.waitForURL('**/admin');
+  return chosen;
 }
 
 export interface SeedSessionOptions {

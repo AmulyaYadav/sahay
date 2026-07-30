@@ -7,7 +7,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { AdminCreated } from '@sahay/shared';
+import type { AdminCreated, AdminWant } from '@sahay/shared';
 import { ApiClientError } from '../../api/client';
 import { useAdminEvents, useAdminNotice, useAdminSetWants, useCatalogue, useCreateAdmin, useMe } from '../../api/hooks';
 import { useLocale } from '../../i18n/LocaleContext';
@@ -27,7 +27,7 @@ function EventsSection({ isAdmin }: { isAdmin: boolean }) {
   const [noticeBody, setNoticeBody] = useState('');
   const [noticeUrgent, setNoticeUrgent] = useState(false);
   const notice = useAdminNotice();
-  const [wantsFor, setWantsFor] = useState<{ id: string; current: string[] } | null>(null);
+  const [wantsFor, setWantsFor] = useState<{ id: string; current: AdminWant[] } | null>(null);
 
   return (
     <div className="stack">
@@ -94,7 +94,7 @@ function EventsSection({ isAdmin }: { isAdmin: boolean }) {
                 {isAdmin ? (
                   <Button
                     variant="secondary"
-                    onClick={() => setWantsFor({ id: ev.id, current: ev.adminWantSlugs ?? [] })}
+                    onClick={() => setWantsFor({ id: ev.id, current: ev.adminWants ?? [] })}
                   >
                     {t('admin.manageWants')}
                   </Button>
@@ -162,7 +162,7 @@ function WantsDialog({
   target,
   onClose,
 }: {
-  target: { id: string; current: string[] } | null;
+  target: { id: string; current: AdminWant[] } | null;
   onClose: () => void;
 }) {
   const { t } = useLocale();
@@ -177,7 +177,7 @@ function WantsDialogInner({
   onClose,
   title,
 }: {
-  target: { id: string; current: string[] };
+  target: { id: string; current: AdminWant[] };
   onClose: () => void;
   title: string;
 }) {
@@ -185,10 +185,46 @@ function WantsDialogInner({
   const { toast } = useToast();
   const catalogue = useCatalogue();
   const setWants = useAdminSetWants(target.id);
-  const [selected, setSelected] = useState<string[]>(target.current);
 
-  const toggle = (slug: string) => {
-    setSelected((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  // slug -> quantity, where null means "needed, amount unspecified". Absent
+  // from the map means not wanted at all, so null and absent stay distinct.
+  const [picked, setPicked] = useState<Map<string, number | null>>(
+    () => new Map(target.current.map((w) => [w.categorySlug, w.qty])),
+  );
+
+  const update = (mutate: (draft: Map<string, number | null>) => void) => {
+    setPicked((prev) => {
+      const copy = new Map(prev);
+      mutate(copy);
+      return copy;
+    });
+  };
+
+  const toggle = (slug: string) =>
+    update((m) => {
+      if (m.has(slug)) m.delete(slug);
+      else m.set(slug, null);
+    });
+
+  const setQty = (slug: string, qty: number | null) => update((m) => m.set(slug, qty));
+
+  const step = (slug: string, delta: number) =>
+    update((m) => {
+      // First nudge from "unspecified" lands on 1, not 0 — a want of zero is
+      // not a thing you can declare (the DB rejects it), so clamp at 1.
+      const current = m.get(slug) ?? 0;
+      m.set(slug, Math.min(1_000_000, Math.max(1, current + delta)));
+    });
+
+  const save = () => {
+    const wants: AdminWant[] = [...picked].map(([categorySlug, qty]) => ({ categorySlug, qty }));
+    setWants.mutate(wants, {
+      onSuccess: () => {
+        toast(t('sync.submitted'));
+        onClose();
+      },
+      onError: () => toast(t('common.error'), 'error'),
+    });
   };
 
   return (
@@ -203,33 +239,70 @@ function WantsDialogInner({
           </Banner>
         ) : (
           <div className="row-wrap">
-            {(catalogue.data?.categories ?? []).map((c) => (
-              <button
-                key={c.slug}
-                type="button"
-                role="checkbox"
-                aria-checked={selected.includes(c.slug)}
-                className="chip"
-                onClick={() => toggle(c.slug)}
-              >
-                {c.name[locale] ?? c.name.en ?? c.slug}
-              </button>
-            ))}
+            {(catalogue.data?.categories ?? []).map((c) => {
+              const on = picked.has(c.slug);
+              const qty = picked.get(c.slug) ?? null;
+              const name = c.name[locale] ?? c.name.en ?? c.slug;
+              return (
+                <div key={c.slug} className="want-row">
+                  <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={on}
+                    className="chip"
+                    onClick={() => toggle(c.slug)}
+                  >
+                    {name}
+                  </button>
+                  {on ? (
+                    <div className="qty-stepper">
+                      <button
+                        type="button"
+                        className="qty-step"
+                        onClick={() => step(c.slug, -1)}
+                        // Nothing to decrease from "Any", and 1 is the floor —
+                        // a want of zero is not a declaration (the DB agrees).
+                        disabled={qty === null || qty <= 1}
+                        aria-label={t('admin.wantQtyDecrease', { category: name })}
+                      >
+                        −
+                      </button>
+                      <input
+                        className="input qty-input"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={1000000}
+                        value={qty ?? ''}
+                        placeholder={t('admin.wantQtyAny')}
+                        aria-label={t('admin.wantQtyLabel', { category: name })}
+                        onChange={(e) => {
+                          const raw = e.target.value.trim();
+                          if (raw === '') return setQty(c.slug, null);
+                          const n = Number.parseInt(raw, 10);
+                          if (!Number.isFinite(n)) return;
+                          setQty(c.slug, Math.min(1_000_000, Math.max(1, n)));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="qty-step"
+                        onClick={() => step(c.slug, 1)}
+                        aria-label={t('admin.wantQtyIncrease', { category: name })}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         )}
-        <Button
-          block
-          loading={setWants.isPending}
-          onClick={() =>
-            setWants.mutate(selected, {
-              onSuccess: () => {
-                toast(t('sync.submitted'));
-                onClose();
-              },
-              onError: () => toast(t('common.error'), 'error'),
-            })
-          }
-        >
+        <p className="text-sm text-soft" style={{ margin: 0 }}>
+          {t('admin.wantQtyHint')}
+        </p>
+        <Button block loading={setWants.isPending} onClick={save}>
           {t('common.ok')}
         </Button>
       </div>
