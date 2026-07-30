@@ -5,6 +5,10 @@ is one VPS running `docker-compose.prod.yml` (ADR-0010, [deployment.md](deployme
 this splits that across three free providers instead. Read
 [What you are giving up](#what-you-are-giving-up) before relying on it for anything real.
 
+> Also free, and architecturally closer to the design: running the whole compose
+> stack on one Oracle Always Free ARM instance — see
+> [deploy-oracle-arm.md](deploy-oracle-arm.md). Better deployment, less reliable host.
+
 | Piece | Provider | Free tier | Why this one |
 |---|---|---|---|
 | Postgres + PostGIS | **Supabase** | 500 MB, pauses only after 7 days of *inactivity* | PostGIS available, and no compute-hour meter. Neon's free tier caps compute at 100 hours/month — an always-connected server burns ~730, so it does not fit. |

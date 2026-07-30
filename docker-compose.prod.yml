@@ -5,7 +5,12 @@
 # See docs/deployment.md for the full procedure, backups, and rollback.
 services:
   postgres:
-    image: postgis/postgis:16-3.4-alpine
+    # The official postgis/postgis images are published amd64-only, so an ARM
+    # host (Oracle's free Ampere tier, Graviton, an Apple-silicon box) needs a
+    # multi-arch build instead. imresamu/postgis is the community multi-arch
+    # rebuild of the same thing — same PostgreSQL 16 + PostGIS 3.4, verified on
+    # aarch64. Set POSTGIS_IMAGE in .env.prod on ARM; see docs/deploy-oracle-arm.md.
+    image: ${POSTGIS_IMAGE:-postgis/postgis:16-3.4-alpine}
     restart: unless-stopped
     environment:
       POSTGRES_USER: sahay
