@@ -9,7 +9,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web",
+    "apk": "expo prebuild --platform android && cd android && ./gradlew assembleRelease"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
