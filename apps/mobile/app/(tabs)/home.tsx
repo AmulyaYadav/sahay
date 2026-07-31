@@ -14,7 +14,9 @@ import {
   useCatalogue,
   useDashboard,
   useEvent,
+  useInventory,
   useMyRequests,
+  usePendingOffers,
 } from '../../src/hooks';
 import { ensureLocationPermission, useLocationPings } from '../../src/locationPings';
 import { useLocale, useT } from '../../src/locale';
@@ -22,6 +24,8 @@ import { categoryBySlug, categoryGlyph, categoryName } from '../../src/catalogue
 import { formatDateTime, minutesUntil } from '../../src/format';
 import { spacing, TOUCH, useTheme } from '../../src/theme';
 import { Icon } from '../../src/components/icons';
+import { GhostLink, MockCard } from '../../src/components/mock';
+import { CategoryEmoji } from '../../src/components/categoryEmoji';
 import {
   Badge,
   Body,
@@ -66,6 +70,14 @@ export default function HomeScreen() {
   const availability = useAvailability(activeEventId);
   const requests = useMyRequests(activeEventId ?? undefined);
   const matches = useActiveMatches();
+  const inventory = useInventory(activeEventId);
+  // Polled: an offer is a ~45s window, so home must not miss one (option 2 —
+  // the mockup's four cards, with this appearing above them only when live).
+  const offers = usePendingOffers({ poll: true });
+
+  // Mockup 8 shows one "Active request" card; the newest open request is the one
+  // a person is waiting on.
+  const supplyItems = (inventory.data?.items ?? []).filter((i) => i.active);
 
   const [duration, setDuration] = useState<Duration>(60);
   const [toggling, setToggling] = useState(false);
@@ -116,33 +128,44 @@ export default function HomeScreen() {
   // Throttled coarse pings while helping; auto-off after long background.
   useLocationPings(activeEventId, helpingOn, () => void setAvailability(false));
 
-  const greeting = (
-    <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-      <View style={{ flex: 1 }}>
-        <Heading>{t(`greeting.${timeOfDayKey()}`)},</Heading>
+  const circleButton = (label: string, icon: 'menu' | 'bell', onPress: () => void) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: TOUCH,
+        height: TOUCH,
+        borderRadius: TOUCH / 2,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: pressed ? th.colors.cardAlt : 'transparent',
+      })}
+    >
+      <Icon name={icon} size={22} color={th.colors.text} />
+    </Pressable>
+  );
+
+  /**
+   * Mockup 8's header: a menu on the left and a bell on the right, with the
+   * greeting on its own line beneath. The language toggle sits beside the bell —
+   * the mockup does not draw it, but it was asked for on this screen explicitly,
+   * and Settings (behind the menu) is a worse home for a one-tap switch.
+   */
+  const header = (
+    <View style={{ gap: spacing.md }}>
+      <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        {circleButton(t('settings.title'), 'menu', () => router.push('/settings'))}
+        <Row gap={spacing.xs} style={{ alignItems: 'center' }}>
+          <LanguageToggle />
+          {circleButton(t('notifications.title'), 'bell', () => router.push('/settings/notifications'))}
+        </Row>
+      </Row>
+      <View>
+        <Body color={th.colors.textSecondary}>{t(`greeting.${timeOfDayKey()}`)},</Body>
         <Heading style={{ fontWeight: '700' }}>{me?.pseudonym ?? '…'} 👋</Heading>
       </View>
-      <Row gap={spacing.sm}>
-      <LanguageToggle />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('notifications.title')}
-        onPress={() => router.push('/settings/notifications')}
-        style={({ pressed }) => ({
-          width: TOUCH,
-          height: TOUCH,
-          borderRadius: TOUCH / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: pressed ? th.colors.cardAlt : th.colors.surface,
-          borderWidth: 1,
-          borderColor: th.colors.border,
-        })}
-      >
-        <Icon name="bell" size={20} color={th.colors.text} />
-      </Pressable>
-      </Row>
-    </Row>
+    </View>
   );
 
   if (!activeEventId) {
@@ -156,7 +179,7 @@ export default function HomeScreen() {
           gap: spacing.md,
         }}
       >
-        {greeting}
+        {header}
         <View style={{ flex: 1, justifyContent: 'center', gap: spacing.md }}>
           <Heading center>{t('home.noEventTitle')}</Heading>
           <Muted center>{t('home.noEventBody')}</Muted>
@@ -172,6 +195,10 @@ export default function HomeScreen() {
       r.status,
     ),
   );
+  const activeRequest = activeRequests[0];
+  const requestMatch = activeRequest
+    ? (matches.data?.items ?? []).find((m) => m.requestId === activeRequest.id)
+    : undefined;
   const activeMatches = (matches.data?.items ?? []).filter(
     (m) => m.status === 'active' && m.eventId === activeEventId,
   );
@@ -199,7 +226,7 @@ export default function HomeScreen() {
         />
       }
     >
-      {greeting}
+      {header}
 
       {joined.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
@@ -214,198 +241,130 @@ export default function HomeScreen() {
         </ScrollView>
       ) : null}
 
-      {/* Active event card (§4.2) */}
-      <View
-        style={{
-          backgroundColor: th.colors.surface,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: th.colors.border,
-          padding: spacing.lg,
-          gap: spacing.sm,
-        }}
-      >
-        <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <H3 style={{ flex: 1 }}>
-            {ev?.title ?? joined.find((j) => j.id === activeEventId)?.title ?? '…'}
-          </H3>
-          {ev ? (
-            <Badge
-              label={
-                ev.status === 'active'
-                  ? t('events.active')
-                  : ev.status === 'paused'
-                    ? t('events.paused')
-                    : ev.status === 'completed' || ev.status === 'archived'
-                      ? t('events.ended')
-                      : ev.status
-              }
-              tone={ev.status === 'active' ? 'success' : ev.status === 'paused' ? 'warn' : 'default'}
-            />
-          ) : null}
-        </Row>
-        {ev ? (
-          <View style={{ gap: spacing.xs }}>
-            <Row gap={spacing.sm}>
-              <Icon name="calendar" size={16} color={th.colors.textSecondary} />
-              <MutedCaption style={{ flex: 1 }}>
-                {formatDateTime(ev.startsAt, locale)} – {formatDateTime(ev.endsAt, locale)}
-              </MutedCaption>
-            </Row>
-            <Row gap={spacing.sm}>
-              <Icon name="map-pin" size={16} color={th.colors.textSecondary} />
-              <MutedCaption style={{ flex: 1 }}>{ev.areaLabel}</MutedCaption>
-            </Row>
-          </View>
-        ) : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('home.viewEvent')}
-          onPress={() => router.push(`/event/${activeEventId}`)}
-          style={({ pressed }) => ({
-            minHeight: TOUCH,
-            justifyContent: 'center',
-            opacity: pressed ? 0.7 : 1,
-          })}
+      {/* Live offer, above the mockup's cards and only while one exists. An offer
+          expires in seconds, so it cannot wait behind a tab. */}
+      {(offers.data?.items ?? []).map((offer) => (
+        <MockCard
+          key={offer.id}
+          onPress={() => router.push(`/offer/${offer.id}`)}
+          accessibilityLabel={t('offer.title')}
+          style={{ borderWidth: 1, borderColor: th.colors.warning }}
         >
-          <Body color={th.colors.primary} style={{ fontWeight: '500' }}>
-            {t('home.viewEvent')} →
-          </Body>
-        </Pressable>
-      </View>
-
-      {/* Event notices (§4.3) */}
-      {(ev?.notices ?? []).map((n) => (
-        <View
-          key={n.id}
-          style={{
-            backgroundColor: th.colors.warningTint,
-            borderRadius: 16,
-            padding: spacing.lg,
-            flexDirection: 'row',
-            gap: spacing.md,
-          }}
-        >
-          <Icon name="alert" size={20} color={th.colors.warning} />
-          <View style={{ flex: 1, gap: spacing.xs }}>
-            <Body>{n.body}</Body>
-            <MutedCaption>{formatDateTime(n.createdAt, locale)}</MutedCaption>
-          </View>
-        </View>
-      ))}
-
-      {/* Helping now (§4.4) */}
-      <View
-        style={{
-          backgroundColor: helpingOn ? th.colors.primaryTint : th.colors.surface,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: helpingOn ? 'transparent' : th.colors.border,
-          padding: spacing.lg,
-          gap: spacing.sm,
-        }}
-      >
-        <Row style={{ justifyContent: 'space-between' }}>
-          <H3>{t('availability.helpingNow')}</H3>
-          <Switch
-            accessibilityLabel={t('availability.helpingNow')}
-            accessibilityRole="switch"
-            value={helpingOn}
-            disabled={toggling || !ev || ev.status !== 'active'}
-            onValueChange={(v) => void setAvailability(v)}
-            trackColor={{ true: th.colors.primary, false: th.colors.border }}
-            thumbColor={th.colors.surface}
-          />
-        </Row>
-        <Muted>{helpingOn ? t('availability.on') : t('availability.off')}</Muted>
-        {helpingOn ? <MutedCaption>{t('home.locationSharing')}</MutedCaption> : null}
-        {helpingOn && availability.data?.until ? (
-          <MutedCaption>
-            {`${formatDateTime(availability.data.until, locale)} · ${t('misc.minutes', {
-              count: minutesUntil(availability.data.until),
-            })}`}
-          </MutedCaption>
-        ) : null}
-        {!helpingOn ? (
-          <Row style={{ flexWrap: 'wrap' }} gap={spacing.sm}>
-            <Chip label={t('availability.for30')} selected={duration === 30} onPress={() => setDuration(30)} />
-            <Chip label={t('availability.for60')} selected={duration === 60} onPress={() => setDuration(60)} />
-            <Chip label={t('availability.for120')} selected={duration === 120} onPress={() => setDuration(120)} />
-            <Chip
-              label={t('availability.untilEventEnd')}
-              selected={duration === 'event_end'}
-              onPress={() => setDuration('event_end')}
-            />
+          <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <H3 style={{ flex: 1 }}>{t('offer.title')}</H3>
+            <Badge label={t('offer.respondNow')} tone="warn" />
           </Row>
-        ) : (
-          <Button
-            title={t('availability.stopNow')}
-            variant="secondary"
-            onPress={() => void setAvailability(false)}
-            loading={toggling}
+          <MutedCaption>{categoryName(categoryBySlug(catalogue.data?.categories, offer.categorySlug), locale)}</MutedCaption>
+        </MockCard>
+      ))}
+
+      {/* "Helping now" — green when on, per the mockup. */}
+      <MockCard
+        style={{
+          backgroundColor: helpingOn ? th.colors.successTint : th.colors.surface,
+          borderWidth: helpingOn ? 0 : 1,
+          borderColor: th.colors.border,
+        }}
+      >
+        <Row style={{ justifyContent: 'space-between', alignItems: 'center', gap: spacing.md }}>
+          <Row gap={spacing.sm} style={{ flex: 1, alignItems: 'center' }}>
+            {helpingOn ? <Icon name="check" size={18} color={th.colors.success} /> : null}
+            <View style={{ flex: 1 }}>
+              <H3 color={helpingOn ? th.colors.success : th.colors.text}>
+                {t('activeEvent.helpingNow')}
+              </H3>
+              <MutedCaption>{t('activeEvent.helpingBody')}</MutedCaption>
+            </View>
+          </Row>
+          <Switch
+            value={helpingOn}
+            onValueChange={(v) => void setAvailability(v)}
+            disabled={toggling}
+            accessibilityLabel={t('activeEvent.helpingNow')}
+            trackColor={{ true: th.colors.success, false: th.colors.border }}
+            thumbColor={Platform.OS === 'android' ? '#FFFFFF' : undefined}
           />
-        )}
-      </View>
+        </Row>
+      </MockCard>
 
-      {/* Quick actions (§4.5) */}
-      <H3>{t('home.quickActions')}</H3>
-      <Row gap={spacing.md} style={{ alignItems: 'stretch' }}>
-        <QuickActionTile
-          icon="hand-heart"
-          iconBg={th.colors.primaryTint}
-          iconColor={th.colors.primary}
-          title={t('home.requestHelp')}
-          subtitle={t('home.requestHelpHint')}
-          onPress={() => router.push('/request/new')}
-          accessibilityLabel={t('home.requestHelp')}
-        />
-        <QuickActionTile
-          icon="backpack"
-          iconBg={th.colors.successTint}
-          iconColor={th.colors.success}
-          title={t('home.addSupplies')}
-          subtitle={t('home.addSuppliesHint')}
-          onPress={() => router.push('/(tabs)/supplies')}
-          accessibilityLabel={t('home.addSupplies')}
-        />
-      </Row>
-      <Button
-        title={t('bring.title')}
-        variant="secondary"
-        onPress={() => router.push(`/event/${activeEventId}?focus=bring`)}
-      />
-
-      {/* Active request(s) */}
-      {activeRequests.length > 0 ? <H3>{t('home.myRequest')}</H3> : null}
-      {activeRequests.map((r) => (
-        <RequestCard key={r.id} request={r} onPress={() => router.push(`/request/${r.id}`)} />
-      ))}
-
-      {/* Active matches */}
-      {activeMatches.length > 0 ? <H3>{t('home.myMatches')}</H3> : null}
-      {activeMatches.map((m) => (
-        <MatchRow key={m.id} match={m} onPress={() => router.push(`/match/${m.id}`)} />
-      ))}
-
-      {/* Top shortages */}
-      {topNeeds.length > 0 ? (
-        <>
-          <H3>{t('home.topNeeds')}</H3>
-          {topNeeds.map((n) => {
-            const cat = categoryBySlug(catalogue.data?.categories, n.categorySlug);
-            return (
-              <ListRow
-                key={n.categoryId}
-                leading={<CategoryChip glyph={categoryGlyph(cat)} group={cat?.group} />}
-                title={categoryName(cat, locale)}
-                trailing={<NeedPill level={n.level} label={t(`shortage.${n.level}`)} />}
-                chevron={false}
-              />
-            );
-          })}
-          <StalenessNote updatedAt={dashboard.data?.generatedAt ?? dashboard.dataUpdatedAt} />
-        </>
+      {/* Active request, with the match hint the mockup shows in green. */}
+      {activeRequest ? (
+        <MockCard
+          onPress={() => router.push(`/request/${activeRequest.id}`)}
+          accessibilityLabel={t('activeEvent.activeRequest')}
+        >
+          <MutedCaption>{t('activeEvent.activeRequest')}</MutedCaption>
+          <Row gap={spacing.md} style={{ alignItems: 'center' }}>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: th.colors.warningTint,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <CategoryEmoji slug={activeRequest.categorySlug} size={20} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <H3>{categoryName(categoryBySlug(catalogue.data?.categories, activeRequest.categorySlug), locale)}</H3>
+              <MutedCaption>
+                {t('needs.qtyNeeded', {
+                  qty: Math.round(Number(activeRequest.qty)),
+                  unit: activeRequest.unit,
+                })}
+              </MutedCaption>
+              {requestMatch ? (
+                <Body color={th.colors.success}>{t('activeEvent.newMatchFound')}</Body>
+              ) : null}
+            </View>
+            <Icon name="chevron-right" size={20} color={th.colors.textSecondary} />
+          </Row>
+        </MockCard>
       ) : null}
+
+      {/* Your supplies: a count and a row of glyphs, as drawn. */}
+      <MockCard onPress={() => router.push('/(tabs)/supplies')} accessibilityLabel={t('activeEvent.yourSupplies')}>
+        <MutedCaption>{t('activeEvent.yourSupplies')}</MutedCaption>
+        <Row gap={spacing.md} style={{ alignItems: 'center' }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: th.colors.primaryTint,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <CategoryEmoji slug={supplyItems[0]?.categorySlug ?? 'container'} size={20} />
+          </View>
+          <H3 style={{ flex: 1 }}>
+            {t('activeEvent.itemsAvailable', { count: supplyItems.length })}
+          </H3>
+          <Row gap={spacing.xs}>
+            {supplyItems.slice(0, 4).map((i) => (
+              <CategoryEmoji key={i.id} slug={i.categorySlug} size={18} />
+            ))}
+          </Row>
+          <Icon name="chevron-right" size={20} color={th.colors.textSecondary} />
+        </Row>
+      </MockCard>
+
+      {/* Active matches stay reachable: the mockup routes them through the
+          match-found moment, but an in-progress match must not become
+          unreachable if that screen was dismissed. */}
+      {(matches.data?.items ?? []).map((m) => (
+        <MockCard key={m.id} onPress={() => router.push(`/match/${m.id}`)} accessibilityLabel={t('match.matched')}>
+          <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <H3 style={{ flex: 1 }}>{t('match.matched')}</H3>
+            <Icon name="chevron-right" size={20} color={th.colors.textSecondary} />
+          </Row>
+          <MutedCaption>{categoryName(categoryBySlug(catalogue.data?.categories, m.categorySlug), locale)}</MutedCaption>
+        </MockCard>
+      ))}
+
       <Gap />
     </ScrollView>
   );
