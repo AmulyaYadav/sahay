@@ -82,9 +82,7 @@ export default function EventsScreen() {
           <View style={{ gap: spacing.xs, alignItems: 'center', paddingTop: spacing.sm }}>
             <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
               <Icon name="hand-heart" size={28} color={th.colors.primary} />
-              <Title>
-                Sahay <Title color={th.colors.primary}>सहारा</Title>
-              </Title>
+              <Title>{t('common.appName')}</Title>
             </Row>
             <Body color={th.colors.textSecondary}>{t('events.tagline')}</Body>
           </View>

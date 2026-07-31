@@ -101,6 +101,13 @@ function AppShell() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="auth" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        {/* Mockup flow 2 → 7. Each screen draws its own chrome, so no stack header. */}
+        <Stack.Screen name="attend/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="warrior/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="needs/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="carry/[id]/index" options={{ headerShown: false }} />
+        <Stack.Screen name="carry/[id]/items" options={{ headerShown: false }} />
+        <Stack.Screen name="carry/[id]/done" options={{ headerShown: false }} />
         <Stack.Screen name="event/[id]" options={{ title: t('events.dashboard') }} />
         <Stack.Screen name="request/new" options={{ title: t('request.title') }} />
         <Stack.Screen name="request/[id]" options={{ title: t('request.searching') }} />
