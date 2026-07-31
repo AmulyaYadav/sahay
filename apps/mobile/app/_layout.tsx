@@ -108,6 +108,10 @@ function AppShell() {
         <Stack.Screen name="carry/[id]/index" options={{ headerShown: false }} />
         <Stack.Screen name="carry/[id]/items" options={{ headerShown: false }} />
         <Stack.Screen name="carry/[id]/done" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="match-found/[id]"
+          options={{ presentation: 'fullScreenModal', headerShown: false }}
+        />
         <Stack.Screen name="event/[id]" options={{ title: t('events.dashboard') }} />
         <Stack.Screen name="request/new" options={{ title: t('request.title') }} />
         <Stack.Screen name="request/[id]" options={{ title: t('request.searching') }} />
