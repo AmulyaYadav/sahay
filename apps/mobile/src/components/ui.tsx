@@ -727,9 +727,9 @@ export function CountdownCard({
 
 /* ------------------------------------------------------------------ input */
 
-export function Field(props: TextInputProps & { label?: string }) {
+export function Field(props: TextInputProps & { label?: string; hint?: string }) {
   const th = useTheme();
-  const { label, style, ...rest } = props;
+  const { label, hint, style, ...rest } = props;
   return (
     <View style={{ gap: spacing.xs }}>
       {label ? <MutedCaption>{label}</MutedCaption> : null}
@@ -753,6 +753,7 @@ export function Field(props: TextInputProps & { label?: string }) {
           style,
         ]}
       />
+      {hint ? <MutedCaption>{hint}</MutedCaption> : null}
     </View>
   );
 }

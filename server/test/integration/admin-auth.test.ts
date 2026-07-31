@@ -87,9 +87,9 @@ describe('staff account creation', () => {
     expect(again.statusCode).toBe(409);
   });
 
-  it('rejects usernames that are not lowercase slugs', async () => {
+  it('rejects usernames that are not valid slugs', async () => {
     const admin = await makeAuthedUser({ role: 'admin' });
-    for (const username of ['Asha', 'a', 'has space', '-lead', 'trail-', 'sym$bol']) {
+    for (const username of ['a', 'has space', '-lead', 'trail-', 'sym$bol']) {
       const res = await app.inject({
         method: 'POST',
         url: '/api/v1/admin/admins',
@@ -98,6 +98,20 @@ describe('staff account creation', () => {
       });
       expect(res.statusCode, username).toBe(400);
     }
+  });
+
+  it('normalises case rather than rejecting it', async () => {
+    // Typing "Asha.Rao" should produce the account "asha.rao", not an error —
+    // sign-in lowercases too, so a username is never case-sensitive anywhere.
+    const admin = await makeAuthedUser({ role: 'admin' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/admin/admins',
+      headers: admin.headers,
+      payload: { username: 'Asha.Rao', email: randomEmail(), role: 'moderator' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().username).toBe('asha.rao');
   });
 
   it('audits the creation without recording the password', async () => {

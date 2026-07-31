@@ -70,6 +70,21 @@ export const zOtpVerify = z.object({
     name: z.string().max(60).optional(),
   }),
 });
+/**
+ * Username rules, shared by attendees and staff. Lowercase because it is a login
+ * handle, not a display name — the pseudonym is what other participants see, and
+ * a username is never shown to them.
+ */
+export const zUsername = z
+  .string()
+  .min(3)
+  .max(64)
+  // Normalised rather than rejected: someone typing "Amulya" should get the
+  // account "amulya", not a validation error. Login lowercases too, so a
+  // username is never case-sensitive anywhere.
+  .transform((v) => v.trim().toLowerCase())
+  .refine((v) => /^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/.test(v), 'invalid_username');
+
 /** Staff (admin/moderator) username + password sign-in on web. */
 export const zPasswordLogin = z.object({
   username: z.string().min(1).max(64),
@@ -91,9 +106,35 @@ export const zAdminCreated = z.object({
 export type AdminCreated = z.infer<typeof zAdminCreated>;
 
 export const zCreateAdmin = z.object({
-  username: z.string().min(3).max(64).regex(/^[a-z0-9](?:[a-z0-9._-]*[a-z0-9])?$/, 'invalid_username'),
+  username: zUsername,
   email: z.string().email(),
   role: z.enum(['moderator', 'admin']).default('moderator'),
+});
+
+/**
+ * First-time credential setup, after an account is created by verifying an email
+ * code. Attendees get a lower floor than the 12 of staff passwords (ADR-0013):
+ * they type this on a phone, they are not moderation-capable, and the login rate
+ * limits are the same either way.
+ */
+export const zSetCredentials = z.object({
+  username: zUsername,
+  password: z.string().min(8).max(200),
+});
+
+export const zForgotUsername = z.object({
+  email: z.string().email(),
+  locale: zLocale.default('en'),
+});
+
+/**
+ * Password reset. The code proves control of the address in the same request, so
+ * no session is involved — a reset must work for someone who cannot sign in.
+ */
+export const zResetPassword = z.object({
+  email: z.string().email(),
+  code: z.string().length(LIMITS.otpLength).regex(/^\d+$/),
+  newPassword: z.string().min(8).max(200),
 });
 
 export const zChangePassword = z.object({

@@ -7,7 +7,8 @@ import { useAuth } from '../../src/auth';
 import { qk, useNotificationPrefs, type NotificationPrefs } from '../../src/hooks';
 import { useT } from '../../src/locale';
 import { spacing, useTheme } from '../../src/theme';
-import { Body, BodyBold, Card, LoadingView, MutedCaption, Row } from '../../src/components/ui';
+import { Body, BodyBold, Button, Card, LoadingView, MutedCaption, Row } from '../../src/components/ui';
+import { registerForPush } from '../../src/push';
 
 export default function NotificationPrefsScreen() {
   const t = useT();
@@ -16,6 +17,21 @@ export default function NotificationPrefsScreen() {
   const { token } = useAuth();
   const prefsQuery = useNotificationPrefs();
   const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
+  const [enabling, setEnabling] = useState(false);
+
+  // Device registration lives here rather than as a screen in the sign-up flow.
+  // It used to be an interstitial immediately after account creation, which asked
+  // for a permission before the person had any reason to want it; this is where
+  // someone comes when they DO want it.
+  const enableOnThisDevice = async () => {
+    setEnabling(true);
+    try {
+      const ok = token ? await registerForPush(token) : false;
+      Alert.alert(ok ? t('notifications.deviceOn') : t('notifications.deviceRefused'));
+    } finally {
+      setEnabling(false);
+    }
+  };
 
   useEffect(() => {
     if (prefsQuery.data && !prefs) setPrefs(prefsQuery.data);
@@ -39,6 +55,16 @@ export default function NotificationPrefsScreen() {
     <ScrollView
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
     >
+      <Card>
+        <BodyBold>{t('notifications.deviceSectionTitle')}</BodyBold>
+        <MutedCaption>{t('notifications.deviceSectionBody')}</MutedCaption>
+        <Button
+          title={t('notifications.deviceEnable')}
+          onPress={() => void enableOnThisDevice()}
+          loading={enabling}
+        />
+      </Card>
+
       <Card>
         <Row style={{ justifyContent: 'space-between' }}>
           <Body style={{ flex: 1 }}>{t('notifications.detailedPreviews')}</Body>

@@ -109,44 +109,9 @@ export async function verifyOtp(
   const db = getDb();
   const emailHmac = emailBlindIndex(email);
 
-  const [otp] = await db
-    .select()
-    .from(schema.otpCodes)
-    .where(
-      and(
-        eq(schema.otpCodes.emailHmac, emailHmac),
-        isNull(schema.otpCodes.consumedAt),
-        gt(schema.otpCodes.expiresAt, sql`now()`),
-      ),
-    )
-    .orderBy(desc(schema.otpCodes.createdAt))
-    .limit(1);
-  if (!otp) throw errors.unauthorized();
-
-  const [bumped] = await db
-    .update(schema.otpCodes)
-    .set({ attempts: sql`${schema.otpCodes.attempts} + 1` })
-    .where(eq(schema.otpCodes.id, otp.id))
-    .returning({ attempts: schema.otpCodes.attempts });
-  const attempts = bumped?.attempts ?? otp.attempts + 1;
-
-  if (!safeEqualHex(hashOtp(code, emailHmac), otp.codeHash)) {
-    if (attempts >= LIMITS.otpMaxAttempts) {
-      await db
-        .update(schema.otpCodes)
-        .set({ consumedAt: new Date() })
-        .where(eq(schema.otpCodes.id, otp.id));
-      throw errors.rateLimited();
-    }
-    throw errors.unauthorized();
-  }
-  if (attempts > LIMITS.otpMaxAttempts) throw errors.rateLimited();
+  await consumeOtp(emailHmac, code);
 
   const { user, isNewAccount } = await db.transaction(async (tx) => {
-    await tx
-      .update(schema.otpCodes)
-      .set({ consumedAt: new Date() })
-      .where(eq(schema.otpCodes.id, otp.id));
 
     const [existing] = await tx
       .select()
@@ -294,6 +259,153 @@ export async function changeOwnPassword(
           isNull(schema.sessions.revokedAt),
         ),
       );
+  });
+  return { ok: true };
+}
+
+/**
+ * Consumes a valid, unexpired OTP for `email`, or throws. Shared by verifyOtp and
+ * the password reset so the attempt-counting, single-use and lockout behaviour
+ * cannot drift between the two.
+ */
+async function consumeOtp(emailHmac: string, code: string): Promise<void> {
+  const db = getDb();
+  const [otp] = await db
+    .select()
+    .from(schema.otpCodes)
+    .where(
+      and(
+        eq(schema.otpCodes.emailHmac, emailHmac),
+        isNull(schema.otpCodes.consumedAt),
+        gt(schema.otpCodes.expiresAt, sql`now()`),
+      ),
+    )
+    .orderBy(desc(schema.otpCodes.createdAt))
+    .limit(1);
+  if (!otp) throw errors.unauthorized();
+
+  const [bumped] = await db
+    .update(schema.otpCodes)
+    .set({ attempts: sql`${schema.otpCodes.attempts} + 1` })
+    .where(eq(schema.otpCodes.id, otp.id))
+    .returning({ attempts: schema.otpCodes.attempts });
+  const attempts = bumped?.attempts ?? otp.attempts + 1;
+
+  if (!safeEqualHex(hashOtp(code, emailHmac), otp.codeHash)) {
+    if (attempts >= LIMITS.otpMaxAttempts) {
+      await db.update(schema.otpCodes).set({ consumedAt: new Date() }).where(eq(schema.otpCodes.id, otp.id));
+      throw errors.rateLimited();
+    }
+    throw errors.unauthorized();
+  }
+  if (attempts > LIMITS.otpMaxAttempts) throw errors.rateLimited();
+
+  await db.update(schema.otpCodes).set({ consumedAt: new Date() }).where(eq(schema.otpCodes.id, otp.id));
+}
+
+/**
+ * First-time credential setup for an attendee, straight after the account was
+ * created by verifying an emailed code.
+ *
+ * Deliberately refuses if a username is already set: this is setup, not renaming.
+ * Changing a username later would need its own flow and its own thinking about
+ * what it does to sign-in, and nothing asks for that yet.
+ */
+export async function setOwnCredentials(
+  userId: string,
+  username: string,
+  password: string,
+): Promise<{ ok: true; username: string }> {
+  const db = getDb();
+  const normalized = username.trim().toLowerCase();
+
+  return db.transaction(async (tx) => {
+    const [user] = await tx.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (!user) throw errors.notFound();
+    if (user.username) throw errors.conflict();
+
+    const [taken] = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.username, normalized))
+      .limit(1);
+    if (taken) throw errors.conflict();
+
+    await tx
+      .update(schema.users)
+      .set({
+        username: normalized,
+        passwordHash: hashPassword(password),
+        passwordSetAt: new Date(),
+        // Chosen by the owner, so nothing to force a change of.
+        mustChangePassword: false,
+      })
+      .where(eq(schema.users.id, userId));
+    return { ok: true as const, username: normalized };
+  });
+}
+
+/**
+ * Emails an account's username to its own address.
+ *
+ * Always resolves the same way whether or not the address has an account, and
+ * whether or not that account has a username — the response must not become a
+ * way to test which addresses are registered.
+ */
+export async function sendUsernameReminder(email: string, locale: Locale): Promise<{ ok: true }> {
+  const ok = await rateLimit('forgot-username:email', emailBlindIndex(email), 3, 900).catch(() => false);
+  if (!ok) return { ok: true };
+
+  const db = getDb();
+  const [user] = await db
+    .select({ username: schema.users.username, deletedAt: schema.users.deletedAt })
+    .from(schema.users)
+    .where(eq(schema.users.emailHmac, emailBlindIndex(email)))
+    .limit(1);
+
+  if (user?.username && !user.deletedAt) {
+    // Failures are swallowed for the same reason: a provider error must not turn
+    // into a different response for a registered address.
+    await getOtpProvider().sendUsername(email, user.username, locale).catch(() => {});
+  }
+  return { ok: true };
+}
+
+/**
+ * Sets a new password using an emailed code, with no session involved — a reset
+ * has to work for exactly the person who cannot sign in. The code proves control
+ * of the address in the same request that changes the password.
+ *
+ * Every existing session is revoked: if someone else had gained access, the
+ * owner recovering their account is precisely when that should end.
+ */
+export async function resetPasswordWithOtp(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<{ ok: true }> {
+  const emailHmac = emailBlindIndex(email);
+  await consumeOtp(emailHmac, code);
+
+  const db = getDb();
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.emailHmac, emailHmac))
+    .limit(1);
+  // A consumed code proves the address, but only an account with a username has
+  // a password to reset. Same error as a bad code, so this reveals nothing.
+  if (!user || user.deletedAt || !user.username) throw errors.unauthorized();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ passwordHash: hashPassword(newPassword), passwordSetAt: new Date(), mustChangePassword: false })
+      .where(eq(schema.users.id, user.id));
+    await tx
+      .update(schema.sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(schema.sessions.userId, user.id), isNull(schema.sessions.revokedAt)));
   });
   return { ok: true };
 }

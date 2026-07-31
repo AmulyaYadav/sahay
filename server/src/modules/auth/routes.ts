@@ -1,9 +1,21 @@
 import type { FastifyInstance } from 'fastify';
-import { zChangePassword, zOtpStart, zOtpVerify, zPasswordLogin, zUuid } from '@sahay/shared';
+import {
+  zChangePassword,
+  zForgotUsername,
+  zOtpStart,
+  zOtpVerify,
+  zPasswordLogin,
+  zResetPassword,
+  zSetCredentials,
+  zUuid,
+} from '@sahay/shared';
 import { errors } from '../../lib/errors.js';
 import { publishToUser } from '../../realtime/hub.js';
 import {
   changeOwnPassword,
+  resetPasswordWithOtp,
+  sendUsernameReminder,
+  setOwnCredentials,
   listSessions,
   loginWithPassword,
   revokeSession,
@@ -26,6 +38,27 @@ export function registerAuthRoutes(app: FastifyInstance): void {
   app.post('/auth/login', async (req) => {
     const body = zPasswordLogin.parse(req.body);
     return loginWithPassword(body.username, body.password, body.device, req.ip);
+  });
+
+  // First-time credential setup, right after the account was created by verifying
+  // an emailed code. Authenticated: the session from that verification is the
+  // proof that this address belongs to the caller.
+  app.post('/auth/credentials', { preHandler: [app.authenticate] }, async (req) => {
+    const body = zSetCredentials.parse(req.body);
+    return setOwnCredentials(req.auth!.userId, body.username, body.password);
+  });
+
+  // Both recovery routes are *public* and answer identically whether or not the
+  // address has an account — they must not become a way to test which addresses
+  // are registered.
+  app.post('/auth/forgot-username', async (req) => {
+    const body = zForgotUsername.parse(req.body);
+    return sendUsernameReminder(body.email, body.locale);
+  });
+
+  app.post('/auth/password/reset', async (req) => {
+    const body = zResetPassword.parse(req.body);
+    return resetPasswordWithOtp(body.email, body.code, body.newPassword);
   });
 
   // Reachable while must_change_password is set — see PASSWORD_CHANGE_EXEMPT.
