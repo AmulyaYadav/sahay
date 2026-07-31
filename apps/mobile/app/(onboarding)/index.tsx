@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Body, BodyBold, Button, IconSquare, Row, Title } from '../../src/components/ui';
+import { LanguageToggle } from '../../src/components/LanguageToggle';
 import { ParcelHandsVignette } from '../../src/components/vignettes';
 import { useT } from '../../src/locale';
 import { spacing, useTheme } from '../../src/theme';
@@ -24,7 +25,7 @@ export default function OnboardingIntro() {
       icon: 'hand-heart',
       bg: th.colors.primaryTint,
       fg: th.colors.primary,
-      title: t('common.appName'),
+      title: t('onboarding.intro1Title'),
       body: t('onboarding.intro1'),
     },
     {
@@ -43,9 +44,13 @@ export default function OnboardingIntro() {
     },
   ];
 
-  const signIn = async () => {
+  // Both buttons lead to the same OTP screen, which adapts its copy to `mode`.
+  // The mechanism cannot differ: the server deliberately never reveals whether
+  // an email already has an account, so we cannot branch on that before sending
+  // a code. What differs is what we tell the person, before and after.
+  const go = async (mode: 'register' | 'signin') => {
     await AsyncStorage.setItem(K.onboarded, '1').catch(() => {});
-    router.replace('/auth');
+    router.replace({ pathname: '/auth', params: { mode } });
   };
 
   return (
@@ -60,6 +65,13 @@ export default function OnboardingIntro() {
         gap: spacing.lg,
       }}
     >
+      {/* Language is reachable here and from the app chrome, rather than being a
+          forced step during sign-up — someone who only reads Hindi needs it on
+          this screen, before any account exists. */}
+      <Row style={{ justifyContent: 'flex-end' }}>
+        <LanguageToggle />
+      </Row>
+
       <View style={{ gap: spacing.xl, flex: 1, justifyContent: 'center' }}>
         <ParcelHandsVignette />
         <Title center>{t('common.appName')}</Title>
@@ -77,11 +89,8 @@ export default function OnboardingIntro() {
       </View>
 
       <View style={{ gap: spacing.sm }}>
-        <Button
-          title={t('onboarding.getStarted')}
-          onPress={() => router.push('/(onboarding)/language')}
-        />
-        <Button title={t('nav.signIn')} variant="ghost" onPress={() => void signIn()} />
+        <Button title={t('onboarding.createAccount')} onPress={() => void go('register')} />
+        <Button title={t('nav.signIn')} variant="ghost" onPress={() => void go('signin')} />
       </View>
     </ScrollView>
   );

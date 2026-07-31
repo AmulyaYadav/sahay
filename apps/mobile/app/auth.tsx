@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { AuthSession } from '@sahay/shared';
 import { api, ApiRequestError, isOfflineError } from '../src/api';
@@ -20,6 +20,13 @@ export default function AuthScreen() {
   const { locale } = useLocale();
   const { signIn, token } = useAuth();
 
+  // 'register' or 'signin' — set by whichever button was tapped on the welcome
+  // screen. Only the copy differs; see the comment there for why the mechanism
+  // cannot. Anything unrecognised falls back to sign-in, the safer framing:
+  // it does not promise a new account to someone who already has one.
+  const params = useLocalSearchParams<{ mode?: string }>();
+  const mode: 'register' | 'signin' = params.mode === 'register' ? 'register' : 'signin';
+
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -27,6 +34,10 @@ export default function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
   const [resendIn, setResendIn] = useState(0);
   const [pseudonym, setPseudonym] = useState<string | null>(null);
+  // Whether verification actually created an account, which we only learn from
+  // the server's response — so the closing message can be truthful even when it
+  // contradicts the button the person tapped.
+  const [wasNew, setWasNew] = useState(false);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -67,6 +78,7 @@ export default function AuthScreen() {
       });
       await signIn(session);
       setPseudonym(session.user.pseudonym);
+      setWasNew(session.isNewAccount);
       setStep('push');
     } catch (err) {
       setError(messageFor(err, t));
@@ -102,10 +114,13 @@ export default function AuthScreen() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <Title>{t('common.appName')}</Title>
+        <Title>{step === 'email' ? t(`auth.${mode === 'register' ? 'createAccountTitle' : 'signInTitle'}`) : t('common.appName')}</Title>
 
         {step === 'email' ? (
           <View style={{ gap: spacing.lg }}>
+            <Body color={th.colors.muted}>
+              {t(mode === 'register' ? 'auth.createAccountWhy' : 'auth.signInWhy')}
+            </Body>
             <Body color={th.colors.muted}>{t('auth.emailWhy')}</Body>
             <Field
               label={t('auth.emailLabel')}
@@ -155,7 +170,18 @@ export default function AuthScreen() {
 
         {step === 'push' ? (
           <View style={{ gap: spacing.lg }}>
-            {pseudonym ? <Body>{t('auth.welcome', { pseudonym })}</Body> : null}
+            {pseudonym ? (
+              <Body>
+                {t(
+                  wasNew
+                    ? mode === 'register'
+                      ? 'auth.welcome'
+                      : 'auth.accountCreated'
+                    : 'auth.welcomeBack',
+                  { pseudonym },
+                )}
+              </Body>
+            ) : null}
             <Card>
               <Body>{t('notifications.match_offer')}</Body>
               <Muted>{t('notifications.vaguePreview')}</Muted>

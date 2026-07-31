@@ -39,6 +39,7 @@ import {
   Row,
   StalenessNote,
 } from '../../src/components/ui';
+import { LanguageToggle } from '../../src/components/LanguageToggle';
 
 type Duration = 30 | 60 | 120 | 'event_end';
 
@@ -121,6 +122,8 @@ export default function HomeScreen() {
         <Heading>{t(`greeting.${timeOfDayKey()}`)},</Heading>
         <Heading style={{ fontWeight: '700' }}>{me?.pseudonym ?? '…'} 👋</Heading>
       </View>
+      <Row gap={spacing.sm}>
+      <LanguageToggle />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={t('notifications.title')}
@@ -138,6 +141,7 @@ export default function HomeScreen() {
       >
         <Icon name="bell" size={20} color={th.colors.text} />
       </Pressable>
+      </Row>
     </Row>
   );
 
