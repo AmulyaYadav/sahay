@@ -97,6 +97,13 @@ export const hi: StringCatalog = {
   },
   events: {
     discover: 'कार्यक्रम खोजें',
+    tagline: 'आपसी मदद, आसान तरीके से',
+    findNearYou: 'अपने आसपास कार्यक्रम खोजें',
+    popularNearYou: 'आसपास लोकप्रिय',
+    activeNow: 'चालू',
+    peopleJoined: '{{count}} लोग शामिल',
+    cantFind: 'अपना कार्यक्रम नहीं मिला?',
+    askOrganizer: 'आयोजक से कार्यक्रम कोड मांगें।',
     joinByCode: 'कार्यक्रम कोड डालें',
     inviteCode: 'निमंत्रण कोड',
     join: 'कार्यक्रम से जुड़ें', leave: 'कार्यक्रम छोड़ें', joined: 'जुड़ गए', mute: 'सूचनाएँ म्यूट करें',
@@ -108,7 +115,7 @@ export const hi: StringCatalog = {
     needsTitle: 'वर्तमान ज़रूरतें',
     dashboard: 'कार्यक्रम डैशबोर्ड',
     scheduled: 'आगामी',
-    searchPlaceholder: 'कार्यक्रम खोजें',
+    searchPlaceholder: 'नाम या जगह से खोजें',
     noResults: 'कोई कार्यक्रम नहीं मिला। कुछ और खोजें, या नीचे कार्यक्रम कोड डालें।',
     typeFilter: 'कार्यक्रम का प्रकार',
     all: 'सभी प्रकार',
@@ -336,6 +343,7 @@ export const hi: StringCatalog = {
   },
   tabs: {
     home: 'होम', events: 'कार्यक्रम', supplies: 'सामान', profile: 'प्रोफ़ाइल',
+    activity: 'गतिविधि',
   },
   landing: {
     eyebrow: 'आपसी सहायता, आसान बनी',

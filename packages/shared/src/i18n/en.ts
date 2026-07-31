@@ -95,6 +95,13 @@ export const en = {
   },
   events: {
     discover: 'Find an event',
+    tagline: 'Mutual aid, made simple',
+    findNearYou: 'Find an event near you',
+    popularNearYou: 'Popular near you',
+    activeNow: 'Active',
+    peopleJoined: '{{count}} people joined',
+    cantFind: "Can't find your event?",
+    askOrganizer: 'Ask an organizer for the event code.',
     joinByCode: 'Enter event code',
     inviteCode: 'Invite code',
     join: 'Join event', leave: 'Leave event', joined: 'Joined', mute: 'Mute notifications',
@@ -106,7 +113,7 @@ export const en = {
     needsTitle: 'Current needs',
     dashboard: 'Event dashboard',
     scheduled: 'Upcoming',
-    searchPlaceholder: 'Search events',
+    searchPlaceholder: 'Search by name or location',
     noResults: 'No events found. Try a different search, or enter an event code below.',
     typeFilter: 'Event type',
     all: 'All types',
@@ -334,6 +341,7 @@ export const en = {
   },
   tabs: {
     home: 'Home', events: 'Events', supplies: 'Supplies', profile: 'Profile',
+    activity: 'Activity',
   },
   landing: {
     eyebrow: 'Mutual aid, made simple',

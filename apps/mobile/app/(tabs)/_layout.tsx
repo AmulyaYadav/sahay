@@ -35,11 +35,11 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="events"
-        options={{ title: t('tabs.events'), tabBarIcon: icon('map-pin') }}
+        options={{ title: t('tabs.events'), headerShown: false, tabBarIcon: icon('map-pin') }}
       />
       <Tabs.Screen
         name="supplies"
-        options={{ title: t('tabs.supplies'), tabBarIcon: icon('backpack') }}
+        options={{ title: t('tabs.activity'), headerShown: false, tabBarIcon: icon('backpack') }}
       />
       <Tabs.Screen
         name="profile"

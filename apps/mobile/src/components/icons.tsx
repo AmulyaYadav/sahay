@@ -25,7 +25,11 @@ export type IconName =
   | 'settings'
   | 'hand-heart'
   | 'package'
-  | 'eye-off';
+  | 'eye-off'
+  | 'arrow-left'
+  | 'close'
+  | 'check'
+  | 'menu';
 
 interface IconProps {
   name: IconName;
@@ -170,6 +174,26 @@ export function Icon({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) 
           <Path d="M12 3 4 7v10l8 4 8-4V7l-8-4Z" {...common} />
           <Path d="M4 7l8 4 8-4" {...common} />
           <Path d="M12 11v9" {...common} />
+        </>
+      ) : null}
+      {name === 'arrow-left' ? (
+        <>
+          <Path d="M19 12H5" {...common} />
+          <Path d="M12 19l-7-7 7-7" {...common} />
+        </>
+      ) : null}
+      {name === 'close' ? (
+        <>
+          <Path d="M18 6L6 18" {...common} />
+          <Path d="M6 6l12 12" {...common} />
+        </>
+      ) : null}
+      {name === 'check' ? <Path d="M20 6L9 17l-5-5" {...common} /> : null}
+      {name === 'menu' ? (
+        <>
+          <Path d="M3 6h18" {...common} />
+          <Path d="M3 12h18" {...common} />
+          <Path d="M3 18h18" {...common} />
         </>
       ) : null}
       {name === 'eye-off' ? (

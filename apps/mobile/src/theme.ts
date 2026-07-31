@@ -207,3 +207,71 @@ export function cardShadow(theme: Theme): ViewStyle {
 
 /** Numbers that matter (countdowns, stats): 700 + tabular-nums. */
 export const tabularNums: TextStyle = { fontVariant: ['tabular-nums'] };
+
+/* ==========================================================================
+ * Mockup design tokens
+ *
+ * Values read off the supplied mockups, which are the source of truth for the
+ * attendee-facing screens. Kept separate from the palettes above so the two
+ * cannot drift silently: anything here is quoting a design, not deriving from
+ * the older Warm Relief scale.
+ * ======================================================================== */
+
+/** Full-bleed background gradients, top → bottom, one per mockup screen. */
+export const gradients = {
+  /** 2. Confirm attendance — deep navy night. */
+  night: ['#141B34', '#1B2545', '#223056'] as const,
+  /** 3. Be a Sahay Warrior — teal-green with a lighter core behind the shield. */
+  warrior: ['#1F8A70', '#25A67F', '#1E7F68'] as const,
+  /** 5. Can you carry something — pale lavender. */
+  carry: ['#EAE6FB', '#E2DCF9', '#EDE9FC'] as const,
+  /** 7. You're all set — green wash fading into the page. */
+  allSet: ['#C9EBD5', '#E4F5EA', '#F5F7FA'] as const,
+  /** 9. Match found — dark scrim over the map. */
+  matchScrim: ['#101728EE', '#0D1322F5'] as const,
+} as const;
+
+/** Need-level chips on the requests list (mockup 4). */
+export const needLevel = {
+  high: { bg: '#FEE7E7', fg: '#D3382F' },
+  moderate: { bg: '#FEF2D9', fg: '#B7791F' },
+  low: { bg: '#E7F0FE', fg: '#2563EB' },
+} as const;
+
+/** "Active" pill on event cards (mockup 1). */
+export const activePill = { bg: '#DCF5E5', fg: '#177A47' } as const;
+
+/** Circular Yes/No affordances on the swipe cards (mockups 2, 3, 5). */
+export const swipeChoice = {
+  no: { bg: '#FDE7EC', fg: '#E0335B', ring: '#F8CBD6' },
+  yes: { bg: '#DFF3E6', fg: '#1E9E5A', ring: '#BFE6CE' },
+  size: 56,
+} as const;
+
+/**
+ * Card elevation on the mockups is softer and wider than the old whisper: a
+ * broad low-opacity drop that lifts white cards off the grey page.
+ */
+export function mockCardShadow(): ViewStyle {
+  return {
+    shadowColor: '#0B1220',
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  };
+}
+
+/** The primary CTA carries a coloured shadow in the mockups, not a grey one. */
+export function primaryButtonShadow(): ViewStyle {
+  return {
+    shadowColor: '#2563EB',
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  };
+}
+
+/** Radii read off the mockups: inputs 12, cards 16, sheets/hero 24, pills 999. */
+export const mockRadius = { input: 12, card: 16, sheet: 24, pill: 999 } as const;

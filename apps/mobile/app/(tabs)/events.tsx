@@ -1,29 +1,37 @@
 import React, { useState } from 'react';
-import { FlatList, View } from 'react-native';
+import { FlatList, Pressable, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { EventSummary } from '@sahay/shared';
 import { api, ApiRequestError, isOfflineError } from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { useEventSearch } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
-import { formatDateTime } from '../../src/format';
-import { spacing, useTheme } from '../../src/theme';
-import { BalloonsVignette } from '../../src/components/vignettes';
+import { shortDateRange } from '../../src/format';
+import { mockRadius, spacing, useTheme } from '../../src/theme';
+import { ActiveBadge, MetaRow, MockCard } from '../../src/components/mock';
+import { Icon } from '../../src/components/icons';
 import {
-  Badge,
   Body,
   BodyBold,
   Button,
-  Card,
+  Caption,
   EmptyState,
   Field,
   Heading,
   LoadingView,
   MutedCaption,
-  PressableRow,
   Row,
+  Title,
 } from '../../src/components/ui';
 
+/**
+ * Mockup 1 — "Find an Event".
+ *
+ * Wordmark + tagline, a single search field, then the event list. The mockup
+ * replaces the old visible "enter event code" field with a hint to ask an
+ * organiser, so that field now lives behind the hint card: tapping it reveals
+ * the input. Joining by code is existing functionality and had to be kept.
+ */
 export default function EventsScreen() {
   const t = useT();
   const th = useTheme();
@@ -33,6 +41,7 @@ export default function EventsScreen() {
 
   const [q, setQ] = useState('');
   const [code, setCode] = useState('');
+  const [codeOpen, setCodeOpen] = useState(false);
   const [codeBusy, setCodeBusy] = useState(false);
   const [codeError, setCodeError] = useState<string | null>(null);
   const search = useEventSearch(q);
@@ -48,8 +57,7 @@ export default function EventsScreen() {
       setCode('');
     } catch (err) {
       if (isOfflineError(err)) setCodeError(t('common.offline'));
-      else if (err instanceof ApiRequestError && err.status === 404)
-        setCodeError(t('errors.not_found'));
+      else if (err instanceof ApiRequestError && err.status === 404) setCodeError(t('errors.not_found'));
       else setCodeError(t('common.error'));
     } finally {
       setCodeBusy(false);
@@ -62,53 +70,57 @@ export default function EventsScreen() {
     <FlatList
       data={items}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
+      contentContainerStyle={{
+        padding: spacing.lg,
+        gap: spacing.md,
+        paddingBottom: spacing.xxl,
+        backgroundColor: th.colors.bg,
+      }}
       ListHeaderComponent={
-        <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
-          <BalloonsVignette size={128} />
-          <Heading center>{t('events.discover')}</Heading>
-
-          {/* Enter event code (frame 02) */}
-          <Card>
-            <BodyBold>{t('events.joinByCode')}</BodyBold>
-            <Row gap={spacing.sm}>
-              <View style={{ flex: 1 }}>
-                <Field
-                  placeholder="MELA-7K2F"
-                  value={code}
-                  onChangeText={setCode}
-                  autoCapitalize="characters"
-                  autoCorrect={false}
-                />
-              </View>
-              <Button
-                title={t('common.search')}
-                small
-                onPress={() => void openByCode()}
-                loading={codeBusy}
-                disabled={!code.trim()}
-              />
+        <View style={{ gap: spacing.lg, marginBottom: spacing.xs }}>
+          {/* Wordmark: mark + "Sahay सहारा", both scripts, exactly as drawn. */}
+          <View style={{ gap: spacing.xs, alignItems: 'center', paddingTop: spacing.sm }}>
+            <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
+              <Icon name="hand-heart" size={28} color={th.colors.primary} />
+              <Title>
+                Sahay <Title color={th.colors.primary}>सहारा</Title>
+              </Title>
             </Row>
-            {codeError ? <Body color={th.colors.error}>{codeError}</Body> : null}
-          </Card>
+            <Body color={th.colors.textSecondary}>{t('events.tagline')}</Body>
+          </View>
 
-          {/* — or — */}
-          <Row gap={spacing.md}>
-            <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
-            <MutedCaption>{t('common.or')}</MutedCaption>
-            <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
-          </Row>
+          <Heading>{t('events.findNearYou')}</Heading>
 
-          <Field
-            label={t('events.discover')}
-            placeholder={t('events.searchPlaceholder')}
-            value={q}
-            onChangeText={setQ}
-            autoCapitalize="none"
-          />
-          <MutedCaption>{t('events.participantsHidden')}</MutedCaption>
+          {/* Search field with the magnifier inside, right-aligned. */}
+          <View style={{ position: 'relative', justifyContent: 'center' }}>
+            <Field
+              value={q}
+              onChangeText={setQ}
+              placeholder={t('events.searchPlaceholder')}
+              autoCapitalize="none"
+              accessibilityLabel={t('events.searchPlaceholder')}
+              style={{ paddingRight: spacing.xxl + spacing.sm, borderRadius: mockRadius.input }}
+            />
+            <View style={{ position: 'absolute', right: spacing.md }} pointerEvents="none">
+              <Icon name="search" size={20} color={th.colors.textSecondary} />
+            </View>
+          </View>
+
+          {items.length > 0 ? <BodyBold>{t('events.popularNearYou')}</BodyBold> : null}
         </View>
       }
+      renderItem={({ item }) => (
+        <MockCard onPress={() => router.push(`/event/${item.id}`)} accessibilityLabel={item.title}>
+          <Row style={{ alignItems: 'flex-start', gap: spacing.sm }}>
+            <BodyBold style={{ flex: 1, fontSize: 17, lineHeight: 24 }}>{item.title}</BodyBold>
+            {item.status === 'active' ? <ActiveBadge label={t('events.activeNow')} /> : null}
+          </Row>
+          <View style={{ gap: spacing.xs }}>
+            <MetaRow icon="map-pin">{item.areaLabel}</MetaRow>
+            <MetaRow icon="calendar">{shortDateRange(item.startsAt, item.endsAt, locale)}</MetaRow>
+          </View>
+        </MockCard>
+      )}
       ListEmptyComponent={
         search.isLoading ? (
           <LoadingView />
@@ -116,24 +128,44 @@ export default function EventsScreen() {
           <EmptyState message={t('events.noResults')} variant="search" />
         )
       }
-      renderItem={({ item }) => (
-        <PressableRow
-          accessibilityLabel={item.title}
-          onPress={() => router.push(`/event/${item.id}`)}
-        >
-          <Row style={{ justifyContent: 'space-between' }}>
-            <BodyBold numberOfLines={1} style={{ flex: 1 }}>
-              {item.title}
-            </BodyBold>
-            {item.joined ? <Badge label={t('events.joined')} tone="success" /> : null}
-          </Row>
-          <MutedCaption>{item.areaLabel}</MutedCaption>
-          <MutedCaption>
-            {t(`eventTypes.${item.type}`)} · {formatDateTime(item.startsAt, locale)} –{' '}
-            {formatDateTime(item.endsAt, locale)}
-          </MutedCaption>
-        </PressableRow>
-      )}
+      ListFooterComponent={
+        <View style={{ marginTop: spacing.md, gap: spacing.md }}>
+          {/* The mockup's hint card. Tapping it opens the code field, so joining
+              by code is still reachable without putting a second input on the
+              screen the way the old layout did. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${t('events.cantFind')} ${t('events.askOrganizer')}`}
+            onPress={() => setCodeOpen((v) => !v)}
+            style={{
+              backgroundColor: th.colors.primaryTint,
+              borderRadius: mockRadius.card,
+              padding: spacing.lg,
+              gap: 2,
+            }}
+          >
+            <Body color={th.colors.textSecondary}>{t('events.cantFind')}</Body>
+            <Body color={th.colors.textSecondary}>{t('events.askOrganizer')}</Body>
+          </Pressable>
+
+          {codeOpen ? (
+            <View style={{ gap: spacing.sm }}>
+              <Field
+                label={t('events.joinByCode')}
+                value={code}
+                onChangeText={setCode}
+                autoCapitalize="characters"
+                placeholder="MELA-7K2F"
+                style={{ borderRadius: mockRadius.input }}
+              />
+              {codeError ? <Caption color={th.colors.danger}>{codeError}</Caption> : null}
+              <Button title={t('common.search')} onPress={() => void openByCode()} loading={codeBusy} />
+            </View>
+          ) : null}
+
+          <MutedCaption center>{t('events.participantsHidden')}</MutedCaption>
+        </View>
+      }
     />
   );
 }
