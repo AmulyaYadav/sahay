@@ -107,7 +107,7 @@ export default function SettingsScreen() {
         body: { confirmPseudonym: deleteText.trim() },
       });
       await signOut({ revokeServerSession: false });
-      router.replace('/auth');
+      router.replace('/');
     } catch (err) {
       Alert.alert((err as Error).message || t('common.error'));
       setBusy(null);
@@ -116,7 +116,7 @@ export default function SettingsScreen() {
 
   const logout = async () => {
     await signOut();
-    router.replace('/auth');
+    router.replace('/');
   };
 
   const link = (label: string, path: string) => (

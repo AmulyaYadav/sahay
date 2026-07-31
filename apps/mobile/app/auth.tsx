@@ -138,6 +138,14 @@ export default function AuthScreen() {
               loading={busy}
               disabled={!/^\S+@\S+\.\S+$/.test(normalizedEmail)}
             />
+            {/* Explicit way back to the landing screen. The device gesture also
+                works because we were pushed, but a visible control matters when
+                someone has tapped the wrong one of the two buttons. */}
+            <Button
+              title={t('common.back')}
+              variant="ghost"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+            />
           </View>
         ) : null}
 

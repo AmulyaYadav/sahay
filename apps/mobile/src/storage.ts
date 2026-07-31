@@ -3,7 +3,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /** All AsyncStorage keys used by the app, in one place. */
 export const K = {
   locale: 'sahay.locale',
-  onboarded: 'sahay.onboarded',
   lastEventId: 'sahay.lastEventId',
   joinedEvents: 'sahay.joinedEvents',
   pendingInventory: 'sahay.pendingInventory',
