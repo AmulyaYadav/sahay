@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { zCreateEvent, zEventSearch, zJoinEvent, zUuid } from '@sahay/shared';
+import { zAttendanceAnswer, zCreateEvent, zEventSearch, zJoinEvent, zUuid } from '@sahay/shared';
 import { resolveAuth, type AuthContext } from '../../plugins/auth.js';
 import { errors } from '../../lib/errors.js';
 import { getBringSuggestions } from './bring.js';
@@ -12,6 +12,7 @@ import {
   leaveEvent,
   muteEvent,
   searchEvents,
+  answerAttendance,
 } from './service.js';
 
 const zMute = z.object({ muted: z.boolean() });
@@ -69,6 +70,16 @@ export function registerEventRoutes(app: FastifyInstance): void {
     async (req) => {
       const body = zJoinEvent.parse(req.body ?? {});
       return joinEvent(req.auth!.userId, zUuid.parse(req.params.id), body.inviteCode);
+    },
+  );
+
+  // Answer to the "24 hours to go" reminder.
+  app.post<{ Params: { id: string } }>(
+    '/events/:id/attendance',
+    { preHandler: [app.authenticate] },
+    async (req) => {
+      const body = zAttendanceAnswer.parse(req.body);
+      return answerAttendance(req.auth!.userId, zUuid.parse(req.params.id), body.attending);
     },
   );
 

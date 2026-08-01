@@ -285,6 +285,9 @@ export const hi: StringCatalog = {
     deviceOn: 'इस डिवाइस पर सूचनाएँ चालू हैं।',
     deviceRefused: 'अनुमति नहीं मिली, इसलिए इस डिवाइस पर सूचनाएँ नहीं आएँगी। आप इसे फ़ोन सेटिंग्स में बदल सकते हैं।',
     detailedPreviews: 'लॉक स्क्रीन पर विवरण दिखाएँ',
+    attendance_check: 'उपस्थिति जाँच',
+    attendanceTitle: '{{event}} शुरू होने में 24 घंटे',
+    attendanceBody: 'क्या आप बता सकते हैं कि आप आ रहे हैं?',
     match_offer: 'मिलान प्रस्ताव', match_accepted: 'मिलान स्वीकृत',
     match_cancelled: 'मिलान रद्द', new_message: 'नए संदेश',
     request_expiring: 'अनुरोध समाप्त हो रहा है', no_helper_found: 'कोई मददगार नहीं मिला',
@@ -344,6 +347,8 @@ export const hi: StringCatalog = {
   },
   attend: {
     tomorrow: 'कल ही है!',
+    removedTitle: 'इस कार्यक्रम से हटाया गया',
+    removedBody: 'यह आख़िरी दिन था, इसलिए हमने आपको उपस्थित लोगों की सूची से हटा दिया है। आप कभी भी दोबारा जुड़ सकते हैं।',
     swipeTop: 'दाईं ओर स्वाइप करें अगर',
     swipeBottom: 'आप अब भी आ रहे हैं',
     no: 'नहीं',

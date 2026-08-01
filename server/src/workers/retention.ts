@@ -9,6 +9,7 @@
  * this worker, independent of any user action.
  */
 import type { Job } from 'bullmq';
+import { sendAttendanceReminders } from './attendance.js';
 import { sql } from 'drizzle-orm';
 import { QUICK_REPLIES } from '@sahay/shared';
 import { getDb } from '../db/index.js';
@@ -209,6 +210,7 @@ const TASKS: Record<RetentionJob['task'], () => Promise<void>> = {
   anonymize_closed: anonymizeClosed,
   purge_notifications: purgeNotifications,
   event_lifecycle: eventLifecycle,
+  attendance_reminders: sendAttendanceReminders,
 };
 
 /** Exported for tests: run a single retention task by name. */

@@ -283,6 +283,9 @@ export const en = {
     deviceOn: 'Notifications are on for this device.',
     deviceRefused: 'Permission was not granted, so this device will not be notified. You can change that in your phone settings.',
     detailedPreviews: 'Show item details on the lock screen',
+    attendance_check: 'Attendance check',
+    attendanceTitle: '24 hours to go before {{event}}',
+    attendanceBody: 'Can you confirm if you are attending?',
     match_offer: 'Match offers', match_accepted: 'Match accepted',
     match_cancelled: 'Match cancelled', new_message: 'New messages',
     request_expiring: 'Request expiring', no_helper_found: 'No helper found',
@@ -342,6 +345,8 @@ export const en = {
   },
   attend: {
     tomorrow: "Tomorrow's the day!",
+    removedTitle: 'Removed from this event',
+    removedBody: 'This was the last day, so we have taken you off the attendee list. You can join again any time.',
     swipeTop: 'Swipe right if',
     swipeBottom: "you're still coming",
     no: 'No',

@@ -22,6 +22,7 @@ const RETENTION_TASKS: RetentionJob['task'][] = [
   'anonymize_closed',
   'purge_notifications',
   'event_lifecycle',
+  'attendance_reminders',
 ];
 
 const RETENTION_EVERY_MS = 60_000;

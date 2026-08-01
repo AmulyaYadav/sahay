@@ -37,7 +37,8 @@ export interface RetentionJob {
     | 'purge_otps_sessions'
     | 'anonymize_closed'
     | 'purge_notifications'
-    | 'event_lifecycle';
+    | 'event_lifecycle'
+    | 'attendance_reminders';
 }
 export interface DataRequestJob {
   dataRequestId: string;

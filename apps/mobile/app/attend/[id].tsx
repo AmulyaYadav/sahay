@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { api } from '../../src/api';
 import { useAuth } from '../../src/auth';
@@ -11,6 +11,7 @@ import { GradientScreen, SwipeChoiceSheet, TopBar } from '../../src/components/m
 import { ArtFrame, CalendarArt, Confetti } from '../../src/components/mockArt';
 import { formatDateTime } from '../../src/format';
 import { markAttendanceAnswered } from '../../src/attendancePrompt';
+import { forgetJoinedEvent } from '../../src/storage';
 
 /**
  * Mockup 2 — "Confirm Attendance (Day Before)".
@@ -29,14 +30,33 @@ export default function ConfirmAttendance() {
 
   const next = async () => {
     await markAttendanceAnswered(id);
+    await api(`/events/${id}/attendance`, { method: 'POST', token, body: { attending: true } }).catch(
+      () => {},
+    );
     router.replace(`/warrior/${id}`);
   };
   const home = () => router.replace('/(tabs)/home');
 
+  /**
+   * Declining is answered server-side, because whether it also ends the
+   * membership depends on the event: on a day with a successor it is just a
+   * decline and tomorrow's reminder still fires; on the last day there is no
+   * later day to ask about, so the server removes the person and says so.
+   */
   const notComing = async () => {
     await markAttendanceAnswered(id);
     try {
-      await api(`/events/${id}/leave`, { method: 'POST', token, body: {} });
+      const res = await api<{ leftEvent: boolean }>(`/events/${id}/attendance`, {
+        method: 'POST',
+        token,
+        body: { attending: false },
+      });
+      if (res.leftEvent) {
+        await forgetJoinedEvent(id);
+        Alert.alert(t('attend.removedTitle'), t('attend.removedBody'));
+      }
+    } catch {
+      // Never trap someone on this screen because the answer failed to send.
     } finally {
       home();
     }

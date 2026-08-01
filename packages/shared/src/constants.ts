@@ -173,6 +173,7 @@ export const NOTIFICATION_TYPES = [
   'no_helper_found',
   'inventory_low',
   'event_starting',
+  'attendance_check',
   'event_ending',
   'event_paused',
   'event_notice',

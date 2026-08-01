@@ -3,6 +3,7 @@
  * and never leave the database — responses carry only the human areaLabel.
  */
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { nextDailyStart } from '../../workers/attendance.js';
 import type { z } from 'zod';
 import {
   coarsen,
@@ -397,4 +398,32 @@ export async function muteEvent(userId: string, eventId: string, muted: boolean)
     )
     .returning({ id: schema.memberships.id });
   if (rows.length === 0) throw errors.notFound();
+}
+
+/**
+ * Records an answer to the "24 hours to go" reminder.
+ *
+ * Declining on a day that has a successor is just a decline: the next day's
+ * reminder still fires. Declining when no further day exists ends the membership,
+ * because staying joined would keep the person counted as attending an event they
+ * have said they are not coming to.
+ */
+export async function answerAttendance(
+  userId: string,
+  eventId: string,
+  attending: boolean,
+): Promise<{ ok: true; leftEvent: boolean; nextOccurrence: string | null }> {
+  const db = getDb();
+  const [event] = await db.select().from(schema.events).where(eq(schema.events.id, eventId)).limit(1);
+  if (!event) throw errors.notFound();
+
+  const next = nextDailyStart(event.startsAt, event.endsAt, new Date(Date.now() + 60_000));
+  const nextOccurrence = next ? next.toISOString() : null;
+
+  if (attending || nextOccurrence) {
+    return { ok: true, leftEvent: false, nextOccurrence };
+  }
+
+  await leaveEvent(userId, eventId);
+  return { ok: true, leftEvent: true, nextOccurrence: null };
 }

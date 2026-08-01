@@ -215,6 +215,22 @@ export const zSetAdminWants = z.object({
   wants: z.array(zAdminWant).max(200),
 });
 
+/**
+ * Answer to the "24 hours to go" reminder. Saying no on the event's LAST day
+ * removes the person from it — there is no later day to ask about, and leaving
+ * them joined would keep them counted as attending.
+ */
+export const zAttendanceAnswer = z.object({ attending: z.boolean() });
+
+export const zAttendanceResult = z.object({
+  ok: z.literal(true),
+  /** True when declining ended the membership because no further days remain. */
+  leftEvent: z.boolean(),
+  /** ISO date of the next day we would ask about, when one exists. */
+  nextOccurrence: z.string().nullable(),
+});
+export type AttendanceResult = z.infer<typeof zAttendanceResult>;
+
 export const zEventSummary = z.object({
   id: zUuid,
   code: z.string(), // short public identifier, e.g. "MELA-7K2F"
