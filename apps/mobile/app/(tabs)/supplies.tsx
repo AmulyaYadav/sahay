@@ -30,6 +30,7 @@ import {
   Row,
   Stepper,
 } from '../../src/components/ui';
+import { AppHeader } from '../../src/components/AppHeader';
 
 export default function SuppliesScreen() {
   const t = useT();
@@ -42,6 +43,7 @@ export default function SuppliesScreen() {
   const { locale } = useLocale();
   const qc = useQueryClient();
   const { activeEventId, setActiveEventId } = useActiveEvent();
+  const th = useTheme();
 
   // "I can bring this" can arrive scoped to a specific event.
   useEffect(() => {
@@ -77,6 +79,8 @@ export default function SuppliesScreen() {
   const items = (inventory.data?.items ?? []).filter((i) => i.active || i.qtyReserved > 0);
 
   return (
+    <View style={{ flex: 1, backgroundColor: th.colors.bg }}>
+    <AppHeader />
     <ScrollView
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
     >
@@ -137,6 +141,7 @@ export default function SuppliesScreen() {
       ))}
       <Gap />
     </ScrollView>
+    </View>
   );
 }
 

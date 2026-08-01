@@ -338,6 +338,7 @@ export const hi: StringCatalog = {
     idempotency_replay: 'यह कार्रवाई पहले ही संसाधित हो चुकी है।',
   },
   nav: {
+    menu: 'मेन्यू',
     home: 'होम', events: 'कार्यक्रम', profile: 'प्रोफ़ाइल', settings: 'सेटिंग्स',
     admin: 'मॉडरेशन', signIn: 'साइन इन करें', skipToContent: 'सीधे सामग्री पर जाएँ',
   },

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../src/auth';
 import { useCatalogue, useMyRequests, useNotifications } from '../../src/hooks';
@@ -27,6 +27,7 @@ import {
   Row,
   StatStrip,
 } from '../../src/components/ui';
+import { AppHeader } from '../../src/components/AppHeader';
 
 export default function ProfileScreen() {
   const t = useT();
@@ -51,6 +52,8 @@ export default function ProfileScreen() {
   };
 
   return (
+    <View style={{ flex: 1, backgroundColor: th.colors.bg }}>
+    <AppHeader />
     <ScrollView
       contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl }}
     >
@@ -182,5 +185,6 @@ export default function ProfileScreen() {
         {t('common.tagline')}
       </Muted>
     </ScrollView>
+    </View>
   );
 }

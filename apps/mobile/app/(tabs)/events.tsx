@@ -9,6 +9,7 @@ import { useLocale, useT } from '../../src/locale';
 import { shortDateRange } from '../../src/format';
 import { mockRadius, spacing, useTheme } from '../../src/theme';
 import { ActiveBadge, MetaRow, MockCard } from '../../src/components/mock';
+import { AppHeader, HeaderTagline } from '../../src/components/AppHeader';
 import { Icon } from '../../src/components/icons';
 import {
   Body,
@@ -67,25 +68,21 @@ export default function EventsScreen() {
   const items = search.data?.items ?? [];
 
   return (
+    <View style={{ flex: 1, backgroundColor: th.colors.bg }}>
+    <AppHeader />
     <FlatList
       data={items}
       keyExtractor={(item) => item.id}
       contentContainerStyle={{
-        padding: spacing.lg,
+        paddingHorizontal: spacing.lg,
+        paddingTop: spacing.xs,
         gap: spacing.md,
         paddingBottom: spacing.xxl,
         backgroundColor: th.colors.bg,
       }}
       ListHeaderComponent={
         <View style={{ gap: spacing.lg, marginBottom: spacing.xs }}>
-          {/* Wordmark: mark + "Sahay सहारा", both scripts, exactly as drawn. */}
-          <View style={{ gap: spacing.xs, alignItems: 'center', paddingTop: spacing.sm }}>
-            <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
-              <Icon name="hand-heart" size={28} color={th.colors.primary} />
-              <Title>{t('common.appName')}</Title>
-            </Row>
-            <Body color={th.colors.textSecondary}>{t('events.tagline')}</Body>
-          </View>
+          <HeaderTagline />
 
           <Heading>{t('events.findNearYou')}</Heading>
 
@@ -165,5 +162,6 @@ export default function EventsScreen() {
         </View>
       }
     />
+    </View>
   );
 }

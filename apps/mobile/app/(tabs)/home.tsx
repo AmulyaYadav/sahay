@@ -24,6 +24,7 @@ import { categoryBySlug, categoryGlyph, categoryName } from '../../src/catalogue
 import { formatDateTime, minutesUntil } from '../../src/format';
 import { spacing, TOUCH, useTheme } from '../../src/theme';
 import { Icon } from '../../src/components/icons';
+import { AppHeader } from '../../src/components/AppHeader';
 import { GhostLink, MockCard } from '../../src/components/mock';
 import { CategoryEmoji } from '../../src/components/categoryEmoji';
 import {
@@ -128,40 +129,12 @@ export default function HomeScreen() {
   // Throttled coarse pings while helping; auto-off after long background.
   useLocationPings(activeEventId, helpingOn, () => void setAvailability(false));
 
-  const circleButton = (label: string, icon: 'menu' | 'bell', onPress: () => void) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => ({
-        width: TOUCH,
-        height: TOUCH,
-        borderRadius: TOUCH / 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: pressed ? th.colors.cardAlt : 'transparent',
-      })}
-    >
-      <Icon name={icon} size={22} color={th.colors.text} />
-    </Pressable>
-  );
-
-  /**
-   * Mockup 8's header: a menu on the left and a bell on the right, with the
-   * greeting on its own line beneath. The language toggle sits beside the bell —
-   * the mockup does not draw it, but it was asked for on this screen explicitly,
-   * and Settings (behind the menu) is a worse home for a one-tap switch.
-   */
+  // The header is shared by every tab now — it owns the safe-area inset, the
+  // menu, the wordmark and the bell, so no screen invents its own top edge.
   const header = (
-    <View style={{ gap: spacing.md }}>
-      <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
-        {circleButton(t('settings.title'), 'menu', () => router.push('/settings'))}
-        <Row gap={spacing.xs} style={{ alignItems: 'center' }}>
-          <LanguageToggle />
-          {circleButton(t('notifications.title'), 'bell', () => router.push('/settings/notifications'))}
-        </Row>
-      </Row>
-      <View>
+    <View>
+      <AppHeader />
+      <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
         <Body color={th.colors.textSecondary}>{t(`greeting.${timeOfDayKey()}`)},</Body>
         <Heading style={{ fontWeight: '700' }}>{me?.pseudonym ?? '…'} 👋</Heading>
       </View>
@@ -175,7 +148,7 @@ export default function HomeScreen() {
           flex: 1,
           justifyContent: 'center',
           padding: spacing.xl,
-          paddingTop: insets.top + spacing.lg,
+          paddingTop: 0,
           gap: spacing.md,
         }}
       >
@@ -210,7 +183,7 @@ export default function HomeScreen() {
     <ScrollView
       contentContainerStyle={{
         padding: spacing.lg,
-        paddingTop: insets.top + spacing.lg,
+        paddingTop: 0,
         gap: spacing.md,
         paddingBottom: spacing.xxl,
       }}

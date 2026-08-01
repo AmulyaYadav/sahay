@@ -336,6 +336,7 @@ export const en = {
     idempotency_replay: 'This action was already processed.',
   },
   nav: {
+    menu: 'Menu',
     home: 'Home', events: 'Events', profile: 'Profile', settings: 'Settings',
     admin: 'Moderation', signIn: 'Sign in', skipToContent: 'Skip to content',
   },

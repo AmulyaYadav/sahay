@@ -12,6 +12,7 @@ import { ActiveEventProvider } from '../src/activeEvent';
 import { OfflineBanner, OnlineProvider } from '../src/offline';
 import { GlobalLive } from '../src/live';
 import { LoadingView } from '../src/components/ui';
+import { DrawerProvider } from '../src/drawer';
 import { useTheme } from '../src/theme';
 import { K } from '../src/storage';
 
@@ -89,6 +90,7 @@ function AppShell() {
       <StatusBar style={th.dark ? 'light' : 'dark'} />
       <OfflineBanner />
       {token ? <GlobalLive /> : null}
+      <DrawerProvider>
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: th.colors.bg },
@@ -131,6 +133,7 @@ function AppShell() {
         <Stack.Screen name="settings/safety" options={{ title: t('safety.guidance') }} />
         <Stack.Screen name="settings/legal" options={{ title: t('settings.legal') }} />
       </Stack>
+      </DrawerProvider>
     </>
   );
 }
