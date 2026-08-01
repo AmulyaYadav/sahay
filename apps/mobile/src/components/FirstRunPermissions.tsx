@@ -2,30 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { Modal, View } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../auth';
 import { useT } from '../locale';
-import { registerForPush } from '../push';
+import { ensureLocationPermission } from '../locationPings';
+import { requestPushPermission } from '../push';
 import { mockRadius, spacing, useTheme } from '../theme';
 import { Body, BodyBold, Row, Title } from './ui';
 import { GhostLink, PrimaryCta } from './mock';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 
 /**
- * First-run permissions, shown once after sign-in.
+ * First-run permissions, shown once at first launch.
  *
- * Notifications are the only permission asked for here, and it is asked with a
- * reason on screen BEFORE the OS dialog. That ordering matters: the system
+ * Notifications and coarse location are both asked for here, with the reasons on
+ * screen BEFORE the OS dialogs. That ordering matters: the system
  * prompt can only be shown once per install, so firing it cold wastes the single
  * chance and a decline is then only recoverable through device settings.
  *
- * It runs after sign-in rather than at literal first launch because registering
- * a device needs a session — there is nothing to attach a push token to before
- * an account exists.
+ * Runs at first launch, before sign-in. The OS permissions do not need a session,
+ * so they are requested here; the device is registered for push separately and
+ * silently once an account exists and permission is already granted, which adds
+ * no second prompt.
  *
- * Location is deliberately NOT asked for here. It is requested when availability
- * is switched on, where the reason is visible and immediate; asking for someone's
- * location on first run, before they have joined anything, is exactly the kind of
- * ask this app should not make.
+ * Location is asked for here too, by explicit product decision. Worth knowing
+ * what that costs: at first launch there is no event and no context, so the
+ * reason on screen is the only justification the person gets, and a decline is
+ * only recoverable through device settings. Coarse location is still requested
+ * again at the point availability is switched on, so declining here does not
+ * break that flow.
  */
 const SEEN_KEY = 'sahay.permissionsPrompted.v1';
 
@@ -33,12 +36,10 @@ export function FirstRunPermissions() {
   const t = useT();
   const th = useTheme();
   const insets = useSafeAreaInsets();
-  const { token } = useAuth();
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
     let alive = true;
     AsyncStorage.getItem(SEEN_KEY)
       .then((v) => {
@@ -48,7 +49,7 @@ export function FirstRunPermissions() {
     return () => {
       alive = false;
     };
-  }, [token]);
+  }, []);
 
   // Recorded on either answer: this is a one-time ask, not a recurring nag.
   const dismiss = async () => {
@@ -59,7 +60,10 @@ export function FirstRunPermissions() {
   const allow = async () => {
     setBusy(true);
     try {
-      if (token) await registerForPush(token);
+      // Sequential, not parallel: two system dialogs racing each other is
+      // confusing, and on Android the second can be dropped entirely.
+      await requestPushPermission();
+      await ensureLocationPermission();
     } finally {
       setBusy(false);
       void dismiss();
@@ -68,7 +72,7 @@ export function FirstRunPermissions() {
 
   if (!visible) return null;
 
-  const reason = (icon: 'bell' | 'hand-heart' | 'clock', text: string) => (
+  const reason = (icon: IconName, text: string) => (
     <Row key={icon} gap={spacing.md} style={{ alignItems: 'flex-start' }}>
       <View
         style={{
@@ -110,6 +114,7 @@ export function FirstRunPermissions() {
             {reason('clock', t('permissions.reasonAttendance'))}
             {reason('hand-heart', t('permissions.reasonOffers'))}
             {reason('bell', t('permissions.reasonMessages'))}
+            {reason('map-pin', t('permissions.reasonLocation'))}
           </View>
 
           <BodyBold color={th.colors.textSecondary} style={{ fontSize: 12 }}>

@@ -1,6 +1,5 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
-import { FirstRunPermissions } from '../../src/components/FirstRunPermissions';
 import { useT } from '../../src/locale';
 import { useTheme } from '../../src/theme';
 import { Icon, type IconName } from '../../src/components/icons';
@@ -13,8 +12,6 @@ export default function TabsLayout() {
       return <Icon name={name} size={22} color={color} />;
     };
   return (
-    <>
-    <FirstRunPermissions />
     <Tabs
       screenOptions={{
         headerStyle: { backgroundColor: th.colors.canvas },
@@ -49,6 +46,5 @@ export default function TabsLayout() {
         options={{ title: t('tabs.profile'), tabBarIcon: icon('user') }}
       />
     </Tabs>
-    </>
   );
 }

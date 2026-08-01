@@ -276,12 +276,13 @@ export const en = {
   },
   permissions: {
     title: 'Stay in the loop',
-    body: 'Sahay needs to send you notifications so you do not miss the things that are time-sensitive.',
+    body: 'Sahay works best with two permissions. Here is exactly what each is used for.',
     reasonAttendance: 'A reminder 24 hours before an event you have joined, so you can confirm you are coming.',
     reasonOffers: 'When someone nearby needs an item you are carrying. These expire in under a minute.',
     reasonMessages: 'Messages from the person you have been matched with.',
-    changeLater: 'You can change this any time in Settings.',
-    allow: 'Allow notifications',
+    reasonLocation: 'Your approximate location, only while you are available to help, so people nearby can be matched with you. It is rounded and never shown to anyone.',
+    changeLater: 'You can change both any time in Settings.',
+    allow: 'Continue',
     notNow: 'Not now',
   },
   notifications: {

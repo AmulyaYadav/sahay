@@ -13,6 +13,8 @@ import { OfflineBanner, OnlineProvider } from '../src/offline';
 import { GlobalLive } from '../src/live';
 import { LoadingView } from '../src/components/ui';
 import { DrawerProvider } from '../src/drawer';
+import { FirstRunPermissions } from '../src/components/FirstRunPermissions';
+import { useAutoRegisterPush } from '../src/push';
 import { useTheme } from '../src/theme';
 import { K } from '../src/storage';
 
@@ -79,6 +81,7 @@ function AppShell() {
   const th = useTheme();
   const t = useT();
   const { ready: authReady, token } = useAuth();
+  useAutoRegisterPush(token);
   const { ready: localeReady } = useLocale();
 
   if (!authReady || !localeReady) {
@@ -91,6 +94,7 @@ function AppShell() {
       <OfflineBanner />
       {token ? <GlobalLive /> : null}
       <DrawerProvider>
+      <FirstRunPermissions />
       <Stack
         screenOptions={{
           headerStyle: { backgroundColor: th.colors.bg },
