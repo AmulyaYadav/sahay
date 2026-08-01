@@ -274,6 +274,16 @@ export const en = {
     outcomeBody: 'A moderation decision was made on your account or content: {{action}}',
     noticeBody: '{{body}}',
   },
+  permissions: {
+    title: 'Stay in the loop',
+    body: 'Sahay needs to send you notifications so you do not miss the things that are time-sensitive.',
+    reasonAttendance: 'A reminder 24 hours before an event you have joined, so you can confirm you are coming.',
+    reasonOffers: 'When someone nearby needs an item you are carrying. These expire in under a minute.',
+    reasonMessages: 'Messages from the person you have been matched with.',
+    changeLater: 'You can change this any time in Settings.',
+    allow: 'Allow notifications',
+    notNow: 'Not now',
+  },
   notifications: {
     title: 'Notifications',
     vaguePreview: 'Someone at your event may need an item you are carrying.',
