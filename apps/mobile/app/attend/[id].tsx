@@ -10,6 +10,7 @@ import { Body, BodyBold, Title } from '../../src/components/ui';
 import { GradientScreen, SwipeChoiceSheet, TopBar } from '../../src/components/mock';
 import { ArtFrame, CalendarArt, Confetti } from '../../src/components/mockArt';
 import { formatDateTime } from '../../src/format';
+import { markAttendanceAnswered } from '../../src/attendancePrompt';
 
 /**
  * Mockup 2 — "Confirm Attendance (Day Before)".
@@ -26,10 +27,14 @@ export default function ConfirmAttendance() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
 
-  const next = () => router.replace(`/warrior/${id}`);
+  const next = async () => {
+    await markAttendanceAnswered(id);
+    router.replace(`/warrior/${id}`);
+  };
   const home = () => router.replace('/(tabs)/home');
 
   const notComing = async () => {
+    await markAttendanceAnswered(id);
     try {
       await api(`/events/${id}/leave`, { method: 'POST', token, body: {} });
     } finally {
@@ -39,7 +44,15 @@ export default function ConfirmAttendance() {
 
   return (
     <GradientScreen variant="night">
-      <TopBar onBack={() => router.back()} onSkip={home} skipLabel={t('attend.skip')} />
+      <TopBar
+        onBack={() => router.back()}
+        onSkip={() => {
+          // Skipping is an answer too: do not re-ask on every app open today.
+          void markAttendanceAnswered(id);
+          home();
+        }}
+        skipLabel={t('attend.skip')}
+      />
 
       <View style={{ flex: 1, justifyContent: 'center', gap: spacing.xl }}>
         <ArtFrame>
@@ -71,7 +84,7 @@ export default function ConfirmAttendance() {
           noLabel={t('attend.no')}
           yesLabel={t('attend.yes')}
           onNo={() => void notComing()}
-          onYes={next}
+          onYes={() => void next()}
         />
       </View>
     </GradientScreen>

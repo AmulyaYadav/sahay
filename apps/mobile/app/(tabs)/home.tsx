@@ -25,6 +25,7 @@ import { formatDateTime, minutesUntil } from '../../src/format';
 import { spacing, TOUCH, useTheme } from '../../src/theme';
 import { Icon } from '../../src/components/icons';
 import { AppHeader } from '../../src/components/AppHeader';
+import { shouldAskAttendance } from '../../src/attendancePrompt';
 import { GhostLink, MockCard } from '../../src/components/mock';
 import { CategoryEmoji } from '../../src/components/categoryEmoji';
 import {
@@ -125,6 +126,20 @@ export default function HomeScreen() {
       setToggling(false);
     }
   };
+
+  // Second trigger for the attendance flow: opening the app on the day of an
+  // event you already joined. Runs once per event per day (the flow records the
+  // answer), so it prompts rather than nags.
+  const asked = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const ev = event.data;
+    if (!ev || asked.current === ev.id) return;
+    void shouldAskAttendance(ev).then((ask) => {
+      if (!ask) return;
+      asked.current = ev.id;
+      router.push(`/attend/${ev.id}`);
+    });
+  }, [event.data, router]);
 
   // Throttled coarse pings while helping; auto-off after long background.
   useLocationPings(activeEventId, helpingOn, () => void setAvailability(false));
