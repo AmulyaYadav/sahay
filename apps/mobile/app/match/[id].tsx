@@ -500,7 +500,18 @@ function MessageBubble({ msg }: { msg: Message }) {
   const t = useT();
   const th = useTheme();
   const { locale } = useLocale();
-  const body = msg.kind === 'quick' ? t(`chat.quick.${msg.body}`) : msg.body;
+  /*
+    System messages store a translation key, not prose — the server writes
+    'match.completed' and the like so the line reads in whichever language the
+    recipient has chosen. Only quick replies were being translated, so those
+    keys were printed verbatim into the conversation.
+  */
+  const body =
+    msg.kind === 'quick'
+      ? t(`chat.quick.${msg.body}`)
+      : msg.kind === 'system'
+        ? t(msg.body)
+        : msg.body;
 
   if (msg.kind === 'system') {
     return <MutedCaption center>{body}</MutedCaption>;
