@@ -24,6 +24,7 @@ import { registerSafetyRoutes } from './modules/safety/routes.js';
 import { registerPrivacyRoutes } from './modules/privacy/routes.js';
 import { registerAdminRoutes } from './modules/admin/routes.js';
 import { registerHealthRoutes } from './modules/health/routes.js';
+import { parseJsonBody } from './lib/json-body.js';
 import { registerWebsocket } from './realtime/gateway.js';
 
 export async function buildApp(): Promise<FastifyInstance> {
@@ -44,6 +45,23 @@ export async function buildApp(): Promise<FastifyInstance> {
     trustProxy: true,
     bodyLimit: 64 * 1024,
   });
+
+  /*
+    Accept a JSON content type with no body. Fastify's default parser rejects
+    that combination outright, before routing, which turned every no-body POST
+    into an opaque 400. See lib/json-body.ts.
+  */
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_req, body, done) => {
+      try {
+        done(null, parseJsonBody(body as string));
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    },
+  );
 
   await app.register(cors, {
     origin: config.NODE_ENV === 'production' ? [config.WEB_ORIGIN] : true,

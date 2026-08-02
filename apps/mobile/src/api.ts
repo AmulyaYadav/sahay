@@ -79,7 +79,11 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
     res = await fetch(url, {
       method,
       headers: {
-        'Content-Type': 'application/json',
+        // Only when there is something to describe. Declaring a JSON body and
+        // then sending none is what a strict server rejects outright, which is
+        // how cancelling a request, leaving an event and logging out all came
+        // back as an unexplained error.
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
