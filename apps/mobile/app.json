@@ -12,7 +12,11 @@
       "resizeMode": "contain"
     },
     "newArchEnabled": true,
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "org.sahay.app",
@@ -22,7 +26,10 @@
     },
     "android": {
       "package": "org.sahay.app",
-      "permissions": ["ACCESS_COARSE_LOCATION"]
+      "permissions": [
+        "ACCESS_COARSE_LOCATION"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -42,6 +49,15 @@
     ],
     "experiments": {
       "typedRoutes": false
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "7e26dee7-760c-40e5-8e41-0cb457dbfd51"
+      }
+    },
+    "owner": "asdc123"
   }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1697284882",
+    "project_id": "sahay-a1789",
+    "storage_bucket": "sahay-a1789.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1697284882:android:a2dfc15adcc9276c17e9cb",
+        "android_client_info": {
+          "package_name": "org.sahay.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDChM_kCPjnszPXdp_nX4yQ1va-aVqf3ls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
