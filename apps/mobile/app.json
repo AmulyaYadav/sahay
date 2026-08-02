@@ -8,7 +8,8 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#F6F7F9",
     "splash": {
-      "backgroundColor": "#2563EB",
+      "image": "./assets/adaptive-icon.png",
+      "backgroundColor": "#2F6BE4",
       "resizeMode": "contain"
     },
     "newArchEnabled": true,
@@ -29,7 +30,11 @@
       "permissions": [
         "ACCESS_COARSE_LOCATION"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#2F6BE4"
+      }
     },
     "web": {
       "bundler": "metro",
@@ -58,6 +63,7 @@
         "projectId": "7e26dee7-760c-40e5-8e41-0cb457dbfd51"
       }
     },
-    "owner": "asdc123"
+    "owner": "asdc123",
+    "icon": "./assets/icon.png"
   }
 }
