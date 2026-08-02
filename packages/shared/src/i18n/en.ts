@@ -318,6 +318,7 @@ export const en = {
     vagueMessage: 'You have a new message in an exchange.',
     vagueGeneric: 'You have an update in Sahay.',
     matchCancelledBody: 'Your exchange was cancelled. We are looking for another helper.',
+    matchCancelledHelperBody: 'The exchange was cancelled. You do not need to meet anyone — your supplies are available again.',
     deviceSectionTitle: 'This device',
     deviceSectionBody: 'Allow Sahay to notify this device when someone needs an item you are carrying, or when an offer arrives.',
     deviceEnable: 'Enable on this device',

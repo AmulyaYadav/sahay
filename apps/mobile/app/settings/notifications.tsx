@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ScrollView, Switch } from 'react-native';
-import { NOTIFICATION_TYPES, type NotificationType } from '@sahay/shared';
+import { ACTIVE_NOTIFICATION_TYPES, type NotificationType } from '@sahay/shared';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../src/api';
 import { useAuth } from '../../src/auth';
@@ -81,7 +81,7 @@ export default function NotificationPrefsScreen() {
 
       <Card>
         <BodyBold>{t('notifications.title')}</BodyBold>
-        {NOTIFICATION_TYPES.map((type) => (
+        {ACTIVE_NOTIFICATION_TYPES.map((type) => (
           <Row key={type} style={{ justifyContent: 'space-between', minHeight: 44 }}>
             <Body style={{ flex: 1 }}>{t(`notifications.${type}`)}</Body>
             <Switch

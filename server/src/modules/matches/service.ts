@@ -568,6 +568,27 @@ export async function cancelMatchLocked(
     await transitionRequest(tx, request, 'moderated', 'moderator', opts.reason, { closedAt: new Date() });
   } else if (opts.actor === 'requester') {
     await transitionRequest(tx, request, 'cancelled', 'requester', opts.reason, { closedAt: new Date() });
+    after.push(async () => {
+      /*
+        Tell the helper. Only the requester was told when the helper cancelled,
+        so a helper who had set stock aside and started walking to a meeting
+        point learned nothing unless their app happened to be open.
+
+        The reason is deliberately withheld, including when it is `unsafe`.
+        The helper needs to stop waiting; telling them they have been reported
+        as frightening would serve no one and could provoke exactly the
+        confrontation the cancel was meant to avoid.
+      */
+      await notifyQueue().add('notify', {
+        userId: match.helperId,
+        type: 'match_cancelled',
+        titleKey: 'match.cancelled',
+        bodyKey: 'notifications.matchCancelledHelperBody',
+        params: {},
+        deepLink: `/match/${match.id}`,
+        dedupeKey: `matchcancel:${match.id}:helper`,
+      });
+    });
   } else {
     await transitionRequest(tx, request, 'searching', 'helper', opts.reason);
     after.push(async () => {

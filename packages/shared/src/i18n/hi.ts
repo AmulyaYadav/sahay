@@ -320,6 +320,7 @@ export const hi: StringCatalog = {
     vagueMessage: 'आपके आदान-प्रदान में नया संदेश आया है।',
     vagueGeneric: 'सहाय में आपके लिए एक अपडेट है।',
     matchCancelledBody: 'आपका आदान-प्रदान रद्द हो गया। हम दूसरा मददगार ढूँढ रहे हैं।',
+    matchCancelledHelperBody: 'आदान-प्रदान रद्द हो गया। अब किसी से मिलने की ज़रूरत नहीं — आपका सामान फिर उपलब्ध है।',
     deviceSectionTitle: 'यह डिवाइस',
     deviceSectionBody: 'सहाय को इस डिवाइस पर सूचित करने दें जब किसी को आपके पास मौजूद सामान की ज़रूरत हो, या कोई ऑफ़र आए।',
     deviceEnable: 'इस डिवाइस पर चालू करें',

@@ -182,6 +182,28 @@ export const NOTIFICATION_TYPES = [
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
+/**
+ * The subset a person can actually receive today.
+ *
+ * NOTIFICATION_TYPES is the whole vocabulary, including types reserved for
+ * behaviour that is not built yet. Settings offered a switch for every one of
+ * them, so five of the fifteen were controls over notifications that can never
+ * arrive — a promise the app does not keep. Preference screens read from this
+ * list; the wire format still accepts the full set, so turning one on later
+ * needs no migration of anyone's saved preferences.
+ */
+export const ACTIVE_NOTIFICATION_TYPES = [
+  'match_offer',
+  'match_accepted',
+  'match_cancelled',
+  'new_message',
+  'no_helper_found',
+  'attendance_check',
+  'event_notice',
+  'moderation_outcome',
+  'account_security',
+] as const satisfies readonly NotificationType[];
+
 export const UNITS = [
   'item',
   'piece',
