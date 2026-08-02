@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, PixelRatio, Pressable, ScrollView, View } from 'react-native';
+import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Locale } from '@sahay/shared';
@@ -7,7 +7,7 @@ import { api, isOfflineError } from '../../../src/api';
 import { useAuth } from '../../../src/auth';
 import { useBring, useCatalogue } from '../../../src/hooks';
 import { useLocale, useT } from '../../../src/locale';
-import { mockRadius, spacing, useTheme } from '../../../src/theme';
+import { isLargeFontScale, mockRadius, spacing, useTheme } from '../../../src/theme';
 import { Body, BodyBold, Heading, LoadingView, Row, Stepper } from '../../../src/components/ui';
 import { GhostLink, MockCard, PrimaryCta } from '../../../src/components/mock';
 import { CategoryEmoji } from '../../../src/components/categoryEmoji';
@@ -39,16 +39,9 @@ export default function CarryItems() {
   const categories = catalogue.data?.categories ?? [];
   const bySlug = useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
 
-  /**
-   * Whether to give each item's name a line of its own.
-   *
-   * The stepper's width is fixed in points, so raising the device font size
-   * takes width from the name without giving any back. Past roughly 1.3× there
-   * is not enough left for a name like "Packaged water container" to wrap
-   * sensibly, and it degrades to a character or two per line. Below that the
-   * single row of the mockup is kept.
-   */
-  const stackRows = PixelRatio.getFontScale() >= 1.3;
+  // The stepper's width is fixed in points, so a large system font leaves the
+  // name too little to wrap in. Past the threshold it gets a line of its own.
+  const stackRows = isLargeFontScale();
 
   // Suggested items first, then anything the person added by hand.
   const slugs = useMemo(() => {

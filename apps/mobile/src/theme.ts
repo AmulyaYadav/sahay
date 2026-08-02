@@ -1,4 +1,4 @@
-import { useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
+import { PixelRatio, useColorScheme, type TextStyle, type ViewStyle } from 'react-native';
 import type { CategoryGroup, ShortageLevel } from '@sahay/shared';
 
 /**
@@ -193,6 +193,23 @@ export const lineHeights: Record<number, number> = { 28: 36, 20: 28, 16: 24, 14:
 
 /** Minimum touch target (pt). */
 export const TOUCH = 44;
+
+/**
+ * Whether the device is running a noticeably enlarged system font.
+ *
+ * Text scales with this setting; the controls beside it do not, because their
+ * dimensions are in points. Past roughly 1.3x, a row that pairs a fixed-width
+ * control with a label has too little left for the label — it degrades to a
+ * character or two per line, or truncates. Layouts that would break check this
+ * and give the text a line of its own instead.
+ *
+ * Read at render, so a change to the setting applies on the next mount. That is
+ * the same moment the OS itself restarts the activity for, so in practice the
+ * app is already remounting.
+ */
+export function isLargeFontScale(): boolean {
+  return PixelRatio.getFontScale() >= 1.3;
+}
 
 /** Card elevation: surface + 1px border + a whisper of shadow. Nothing floats aggressively. */
 export function cardShadow(theme: Theme): ViewStyle {

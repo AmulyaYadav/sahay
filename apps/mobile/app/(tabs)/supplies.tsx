@@ -420,7 +420,9 @@ function QuickAdd({
         <Card>
           <MutedCaption>{t('inventory.condition')}</MutedCaption>
           <Row style={{ justifyContent: 'space-between' }}>
-            <Body>{t('inventory.sealed')}</Body>
+            {/* flex: 1 like the app's other switch rows — without it a longer
+                translation at a large font size pushes the switch off the edge. */}
+            <Body style={{ flex: 1 }}>{t('inventory.sealed')}</Body>
             <Switch
               accessibilityLabel={t('inventory.sealed')}
               value={sealed}

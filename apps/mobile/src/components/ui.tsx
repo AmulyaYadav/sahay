@@ -16,6 +16,7 @@ import { avatarFromSeed } from '@sahay/shared';
 import {
   cardShadow,
   categoryTint,
+  isLargeFontScale,
   radius,
   shortagePill,
   spacing,
@@ -517,14 +518,27 @@ export function ListRow({
   style?: StyleProp<ViewStyle>;
 }) {
   const th = useTheme();
+  /*
+    A trailing badge cannot shrink — its width is whatever its own text needs.
+    On a large system font it grew until the title beside it was truncated and
+    the caption below wrapped one character per line. Past 1.3x the badge moves
+    under the text, which then has the full row to itself, and the two-line cap
+    on the title comes off so a long name wraps instead of being cut.
+  */
+  const stacked = isLargeFontScale();
   const inner = (
     <Row gap={spacing.md}>
       {leading}
       <View style={{ flex: 1, gap: 2 }}>
-        <BodyBold numberOfLines={2}>{title}</BodyBold>
+        <BodyBold numberOfLines={stacked ? undefined : 2}>{title}</BodyBold>
         {typeof subtitle === 'string' ? <MutedCaption>{subtitle}</MutedCaption> : subtitle}
+        {stacked && trailing ? (
+          <Row gap={spacing.xs} style={{ flexWrap: 'wrap', marginTop: spacing.xs }}>
+            {trailing}
+          </Row>
+        ) : null}
       </View>
-      {trailing}
+      {stacked ? null : trailing}
       {chevron && onPress ? (
         <Icon name="chevron-right" size={18} color={th.colors.textSecondary} />
       ) : null}
