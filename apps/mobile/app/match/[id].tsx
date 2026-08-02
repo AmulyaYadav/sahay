@@ -105,6 +105,9 @@ export default function MatchScreen() {
     void qc.invalidateQueries({ queryKey: qk.match(m.id) });
     void qc.invalidateQueries({ queryKey: qk.activeMatches });
     void qc.invalidateQueries({ queryKey: qk.messages(conversationId ?? 'none') });
+    // Confirming or cancelling settles the reserved stock, so the counts on
+    // home and the supplies tab are out of date the moment this returns.
+    void qc.invalidateQueries({ queryKey: ['inventory'] });
   };
 
   /* ------------------------------------------------------- meeting states */

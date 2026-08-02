@@ -41,6 +41,12 @@ export function GlobalLive() {
         case 'match.update':
           void qc.invalidateQueries({ queryKey: qk.activeMatches });
           void qc.invalidateQueries({ queryKey: ['match'] });
+          // A match reserves stock when it opens and consumes it when it
+          // completes, so the helper's inventory moved. The server has no
+          // inventory.update of its own to announce that, and the other party
+          // is usually the one who confirms — so without this the helper's
+          // counts sit stale until the query happens to go stale on its own.
+          void qc.invalidateQueries({ queryKey: ['inventory'] });
           break;
         case 'message.new':
         case 'conversation.update':

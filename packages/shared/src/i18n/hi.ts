@@ -412,6 +412,7 @@ export const hi: StringCatalog = {
     newMatchFound: 'नया मैच मिला',
     yourSupplies: 'आपका सामान',
     itemsAvailable: '{{count}} चीज़ें उपलब्ध',
+    itemAvailable: '1 चीज़ उपलब्ध',
   },
   matchFound: {
     title: 'मैच मिल गया!',

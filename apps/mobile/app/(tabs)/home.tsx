@@ -80,6 +80,17 @@ export default function HomeScreen() {
   // Mockup 8 shows one "Active request" card; the newest open request is the one
   // a person is waiting on.
   const supplyItems = (inventory.data?.items ?? []).filter((i) => i.active);
+  /*
+    How many units are on offer, not how many rows the list has.
+
+    The card counted rows, so completing an exchange never changed it: giving
+    two of your four torches away leaves the torch row in place. The supplies
+    screen beside it has always shown per-item quantities, so the two
+    disagreed. `qtyAvailable` also excludes anything reserved for a match in
+    progress, which is what "available" should mean to someone deciding
+    whether they can still help.
+  */
+  const supplyCount = supplyItems.reduce((n, i) => n + Number(i.qtyAvailable), 0);
 
   const [duration, setDuration] = useState<Duration>(60);
   const [toggling, setToggling] = useState(false);
@@ -362,7 +373,9 @@ export default function HomeScreen() {
             <CategoryEmoji slug={supplyItems[0]?.categorySlug ?? 'container'} size={20} />
           </View>
           <H3 style={{ flex: 1 }}>
-            {t('activeEvent.itemsAvailable', { count: supplyItems.length })}
+            {supplyCount === 1
+              ? t('activeEvent.itemAvailable')
+              : t('activeEvent.itemsAvailable', { count: supplyCount })}
           </H3>
           <Row gap={spacing.xs}>
             {supplyItems.slice(0, 4).map((i) => (

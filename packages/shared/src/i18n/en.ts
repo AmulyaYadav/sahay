@@ -410,6 +410,7 @@ export const en = {
     newMatchFound: 'New match found',
     yourSupplies: 'Your supplies',
     itemsAvailable: '{{count}} items available',
+    itemAvailable: '1 item available',
   },
   matchFound: {
     title: 'Match found!',
