@@ -34,7 +34,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#2F6BE4"
-      }
+      },
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -50,7 +54,8 @@
           "isAndroidBackgroundLocationEnabled": false
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      "./plugins/withReleaseSigning"
     ],
     "experiments": {
       "typedRoutes": false

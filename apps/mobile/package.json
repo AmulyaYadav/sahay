@@ -5,12 +5,14 @@
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "export:web": "expo export --platform web",
-    "apk": "expo prebuild --platform android && cd android && ./gradlew assembleRelease"
+    "apk": "expo prebuild --platform android && cd android && ./gradlew assembleRelease",
+    "build:apk": "cd android && ./gradlew assembleRelease",
+    "build:aab": "cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@expo/metro-runtime": "~4.0.1",
