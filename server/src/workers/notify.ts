@@ -19,6 +19,20 @@ import type { NotifyJob } from '../queues.js';
 export const VAGUE_PREVIEW_TYPES: ReadonlySet<string> = new Set(['match_offer', 'new_message']);
 
 /**
+ * The vague body to use per type.
+ *
+ * One string used to serve both, and it was written for the offer case:
+ * "Someone at your event may need an item you are carrying." Sent to a helper
+ * that is true. Sent to a requester — who gets new_message pushes throughout
+ * their own exchange — it says the opposite of their situation, and reads as an
+ * unexplained request to go and help someone.
+ */
+const VAGUE_BODY: Record<string, string> = {
+  match_offer: 'notifications.vaguePreview',
+  new_message: 'notifications.vagueMessage',
+};
+
+/**
  * Push payload policy (pure, unit-tested): content-bearing types are vague
  * unless detailed previews are on; every other type (event notices, moderation,
  * security) carries its real localized text — it holds no peer/request details.
@@ -30,7 +44,10 @@ export function buildPushPayload(
 ): PushPayload {
   const vague = VAGUE_PREVIEW_TYPES.has(job.type) && !detailedPreviews;
   const payload: PushPayload = vague
-    ? { title: t(locale, 'common.appName'), body: t(locale, 'notifications.vaguePreview') }
+    ? {
+        title: t(locale, 'common.appName'),
+        body: t(locale, VAGUE_BODY[job.type] ?? 'notifications.vagueGeneric'),
+      }
     : { title: t(locale, job.titleKey, job.params), body: t(locale, job.bodyKey, job.params) };
   if (job.deepLink) payload.deepLink = job.deepLink;
   return payload;

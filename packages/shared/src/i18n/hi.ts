@@ -317,6 +317,9 @@ export const hi: StringCatalog = {
   notifications: {
     title: 'सूचनाएँ',
     vaguePreview: 'आपके कार्यक्रम में किसी को वह चीज़ चाहिए हो सकती है जो आपके पास है।',
+    vagueMessage: 'आपके आदान-प्रदान में नया संदेश आया है।',
+    vagueGeneric: 'सहाय में आपके लिए एक अपडेट है।',
+    matchCancelledBody: 'आपका आदान-प्रदान रद्द हो गया। हम दूसरा मददगार ढूँढ रहे हैं।',
     deviceSectionTitle: 'यह डिवाइस',
     deviceSectionBody: 'सहाय को इस डिवाइस पर सूचित करने दें जब किसी को आपके पास मौजूद सामान की ज़रूरत हो, या कोई ऑफ़र आए।',
     deviceEnable: 'इस डिवाइस पर चालू करें',

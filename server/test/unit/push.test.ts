@@ -97,3 +97,35 @@ describe('push payload vagueness policy', () => {
     expect([...VAGUE_PREVIEW_TYPES].sort()).toEqual(['match_offer', 'new_message']);
   });
 });
+
+describe('vague bodies address the right person', () => {
+  const job = (type: string) => ({
+    type,
+    titleKey: 'notifications.new_message',
+    bodyKey: 'notifications.vaguePreview',
+    params: {},
+    deepLink: '/matches/x',
+  });
+
+  it('tells a helper an item may be needed, but only for an offer', () => {
+    expect(buildPushPayload(job('match_offer'), false, 'en').body).toBe(
+      'Someone at your event may need an item you are carrying.',
+    );
+  });
+
+  it('does not tell a requester they are carrying something', () => {
+    // The regression: a new message in your own exchange pushed the offer
+    // preview, so the person who asked for help was told someone needed an
+    // item they were carrying.
+    const body = buildPushPayload(job('new_message'), false, 'en').body;
+    expect(body).not.toMatch(/carrying/);
+    expect(body).toBe('You have a new message in an exchange.');
+  });
+
+  it('keeps both vague forms free of item details', () => {
+    for (const type of ['match_offer', 'new_message']) {
+      const body = buildPushPayload(job(type), false, 'en').body;
+      expect(body).not.toMatch(/raincoat|bottle|torch/i);
+    }
+  });
+});

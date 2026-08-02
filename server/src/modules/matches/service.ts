@@ -574,11 +574,11 @@ export async function cancelMatchLocked(
       await matchQueue().add('match', { requestId: request.id });
       await notifyQueue().add('notify', {
         userId: match.requesterId,
-        // NOTE: 'match_cancelled' is not (yet) in NOTIFICATION_TYPES — see the
-        // deviation note in docs/api-surface.md.
         type: 'match_cancelled',
         titleKey: 'match.cancelled',
-        bodyKey: 'notifications.vaguePreview',
+        // Not the offer preview: this goes to the requester, who is not
+        // carrying anything and needs to know their exchange fell through.
+        bodyKey: 'notifications.matchCancelledBody',
         params: {},
         deepLink: `/request/${request.id}`,
         dedupeKey: `matchcancel:${match.id}`,
