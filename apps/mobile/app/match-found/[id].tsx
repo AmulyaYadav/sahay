@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Locale } from '@sahay/shared';
 import { useCatalogue, useMatch } from '../../src/hooks';
@@ -32,7 +32,16 @@ export default function MatchFound() {
 
   return (
     <GradientScreen variant="matchScrim">
-      <View style={{ flex: 1, justifyContent: 'center', gap: spacing.xl, padding: spacing.lg }}>
+      {/* Scrolls when the artwork and copy do not fit, so "Open chat" is always
+          reachable rather than centred off the bottom edge. */}
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          gap: spacing.xl,
+          padding: spacing.lg,
+        }}
+      >
         <ArtFrame>
           <View style={{ position: 'absolute' }}>
             <Confetti size={300} />
@@ -55,7 +64,7 @@ export default function MatchFound() {
         </View>
 
         <PrimaryCta title={t('matchFound.openChat')} onPress={() => router.replace(`/match/${id}`)} />
-      </View>
+      </ScrollView>
     </GradientScreen>
   );
 }

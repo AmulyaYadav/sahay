@@ -1,5 +1,5 @@
 import React from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import type { Locale } from '@sahay/shared';
 import { useCatalogue, useInventory } from '../../../src/hooks';
@@ -26,7 +26,23 @@ export default function CarryDone() {
 
   return (
     <GradientScreen variant="allSet">
-      <View style={{ flex: 1, justifyContent: 'center', gap: spacing.xl, padding: spacing.lg }}>
+      {/*
+        Scrolls, and centres only when there is room to.
+
+        This was a plain centred flex column. Nothing in it could shrink — the
+        artwork, the heading, one row per contributed item and the button — so
+        on a shorter screen, or with more than a couple of items, the column
+        overflowed and centring pushed the button off the bottom edge with no
+        way to reach it.
+      */}
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          gap: spacing.xl,
+          padding: spacing.lg,
+        }}
+      >
         <ArtFrame>
           <View style={{ position: 'absolute' }}>
             <Confetti size={300} />
@@ -69,7 +85,7 @@ export default function CarryDone() {
         ) : null}
 
         <PrimaryCta title={t('carry.goHome')} onPress={() => router.replace('/(tabs)/home')} />
-      </View>
+      </ScrollView>
     </GradientScreen>
   );
 }

@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Locale } from '@sahay/shared';
-import { api } from '../../../src/api';
+import { api, isOfflineError } from '../../../src/api';
 import { useAuth } from '../../../src/auth';
 import { useBring, useCatalogue } from '../../../src/hooks';
 import { useLocale, useT } from '../../../src/locale';
@@ -32,6 +32,9 @@ export default function CarryItems() {
   const [qty, setQty] = useState<Record<string, number>>({});
   const [extra, setExtra] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
+  // A ref, not the state: the retry handler below is created inside a call to
+  // `save` and would otherwise capture a stale `busy`.
+  const inFlight = useRef(false);
 
   const categories = catalogue.data?.categories ?? [];
   const bySlug = useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
@@ -50,29 +53,50 @@ export default function CarryItems() {
   };
 
   const save = async () => {
+    if (inFlight.current) return;
     const chosen = slugs.filter((s) => (qty[s] ?? 0) > 0);
     if (chosen.length === 0) return router.replace(`/carry/${id}/done`);
+    inFlight.current = true;
     setBusy(true);
     try {
-      for (const slug of chosen) {
-        const cat = bySlug.get(slug);
-        if (!cat) continue;
-        await api(`/events/${id}/inventory`, {
-          method: 'POST',
-          token,
-          body: {
-            categoryId: cat.id,
-            qty: qty[slug],
-            unit: cat.unit,
-            details: {},
-            idempotencyKey: `carry-${id}-${slug}-${qty[slug]}`,
-          },
-        });
-      }
+      // Concurrent, not sequential: each item was a separate round trip, so a
+      // four-item list took four times as long to release the button.
+      await Promise.all(
+        chosen.map((slug) => {
+          const cat = bySlug.get(slug);
+          if (!cat) return Promise.resolve();
+          return api(`/events/${id}/inventory`, {
+            method: 'POST',
+            token,
+            body: {
+              categoryId: cat.id,
+              qty: qty[slug],
+              unit: cat.unit,
+              details: {},
+              // Deterministic so a retry cannot double-add, but bounded: keys
+              // are capped at 64 characters, and a full uuid plus a long
+              // catalogue slug plus a three-digit quantity overruns that and
+              // fails validation. The uuid's last 12 characters distinguish a
+              // person's events without spending 36.
+              idempotencyKey: `carry-${id.slice(-12)}-${slug}-${qty[slug]}`,
+            },
+          });
+        }),
+      );
       router.replace(`/carry/${id}/done`);
-    } catch {
-      Alert.alert(t('common.error'));
+    } catch (err) {
+      // Say what went wrong. A bare "Something went wrong" over a button that
+      // has re-enabled itself leaves no idea whether to retry or to skip.
+      Alert.alert(
+        t('common.error'),
+        isOfflineError(err) ? t('common.offline') : ((err as Error).message ?? undefined),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('common.retry'), onPress: () => void save() },
+        ],
+      );
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   };
@@ -96,10 +120,13 @@ export default function CarryItems() {
         <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
           {slugs.map((slug) => (
             <MockCard key={slug} style={{ padding: spacing.md }}>
-              <Row gap={spacing.md} style={{ alignItems: 'center' }}>
+              {/* `gap: sm` and a compact stepper: the full-size control plus
+                  md gaps left the name too little width to wrap in. */}
+              <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
                 <CategoryEmoji slug={slug} size={22} />
                 <BodyBold style={{ flex: 1 }}>{name(slug)}</BodyBold>
                 <Stepper
+                  compact
                   value={qty[slug] ?? 0}
                   min={0}
                   onChange={(v) => setQty((q) => ({ ...q, [slug]: v }))}
@@ -115,7 +142,11 @@ export default function CarryItems() {
       </ScrollView>
 
       <View style={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.md, gap: spacing.xs }}>
-        <PrimaryCta title={t('carry.save')} onPress={() => void save()} disabled={busy} />
+        <PrimaryCta
+          title={busy ? t('common.saving') : t('carry.save')}
+          onPress={() => void save()}
+          disabled={busy}
+        />
         <GhostLink title={t('carry.later')} onPress={() => router.replace('/(tabs)/home')} />
       </View>
     </View>

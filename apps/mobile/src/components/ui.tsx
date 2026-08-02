@@ -758,7 +758,15 @@ export function Field(props: TextInputProps & { label?: string; hint?: string })
   );
 }
 
-/** Quantity stepper with large +/- targets. */
+/**
+ * Quantity stepper with large +/- targets.
+ *
+ * `compact` exists for steppers that share a row with a label. At full size the
+ * control is a fixed ~200pt wide, which on a 360pt phone left a supply name
+ * about 58pt to wrap in — one or two characters per line. Compact keeps the
+ * 44pt touch target (the button is square instead of over-wide, and the value
+ * column is sized to the digits) while giving the label back roughly 70pt.
+ */
 export function Stepper({
   value,
   onChange,
@@ -766,6 +774,7 @@ export function Stepper({
   max = 9999,
   unitLabel,
   step = 1,
+  compact = false,
 }: {
   value: number;
   onChange: (v: number) => void;
@@ -773,6 +782,7 @@ export function Stepper({
   max?: number;
   unitLabel?: string;
   step?: number;
+  compact?: boolean;
 }) {
   const th = useTheme();
   const t = useT();
@@ -782,7 +792,7 @@ export function Stepper({
       accessibilityLabel={a11y}
       onPress={() => onChange(Math.min(max, Math.max(min, value + delta)))}
       style={({ pressed }) => ({
-        width: TOUCH + 8,
+        width: compact ? TOUCH : TOUCH + 8,
         height: TOUCH,
         borderRadius: radius.md,
         alignItems: 'center',
@@ -798,9 +808,9 @@ export function Stepper({
     </Pressable>
   );
   return (
-    <Row gap={spacing.md}>
+    <Row gap={compact ? spacing.xs : spacing.md}>
       {btn('−', -step, t('misc.decrease'))}
-      <View style={{ minWidth: 72, alignItems: 'center' }}>
+      <View style={{ minWidth: compact ? 28 : 72, alignItems: 'center', justifyContent: 'center' }}>
         <Text
           allowFontScaling
           accessibilityLabel={`${value} ${unitLabel ?? ''}`}

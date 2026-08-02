@@ -246,6 +246,39 @@ export default function HomeScreen() {
         </MockCard>
       ))}
 
+      {/*
+        Asking for help is the whole point of the app for the person in need,
+        and until now it had no entry point anywhere in the mobile UI — the
+        screen existed but nothing routed to it. It sits above "Helping now"
+        because someone who is short of something is in more of a hurry than
+        someone deciding whether to offer.
+      */}
+      <MockCard
+        onPress={() => router.push('/request/new')}
+        accessibilityLabel={t('home.requestHelp')}
+        style={{ backgroundColor: th.colors.primary, paddingVertical: spacing.md }}
+      >
+        <Row gap={spacing.md} style={{ alignItems: 'center' }}>
+          <View
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 12,
+              backgroundColor: '#FFFFFF26',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Icon name="hand-heart" size={22} color="#FFFFFF" />
+          </View>
+          <View style={{ flex: 1, gap: 2 }}>
+            <H3 color="#FFFFFF">{t('home.requestHelp')}</H3>
+            <Body color="#FFFFFFCC">{t('home.requestHelpHint')}</Body>
+          </View>
+          <Icon name="chevron-right" size={20} color="#FFFFFFCC" />
+        </Row>
+      </MockCard>
+
       {/* "Helping now" — green when on, per the mockup. */}
       <MockCard
         style={{

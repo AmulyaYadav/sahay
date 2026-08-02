@@ -46,10 +46,23 @@ interface ApiOptions {
   body?: unknown;
   token?: string | null;
   query?: Record<string, string | number | boolean | undefined>;
+  /** Override the default request timeout. */
+  timeoutMs?: number;
 }
 
+/**
+ * How long to wait before giving up on a request.
+ *
+ * `fetch` has no timeout of its own, and the platform socket timeout is a
+ * minute or more. A screen that disables its button while a request is in
+ * flight therefore looks frozen on a bad connection — pressed, greyed out,
+ * and never resolving. Failing at 20s turns that into an error the person can
+ * act on.
+ */
+const DEFAULT_TIMEOUT_MS = 20_000;
+
 export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
-  const { method = 'GET', body, token, query } = opts;
+  const { method = 'GET', body, token, query, timeoutMs = DEFAULT_TIMEOUT_MS } = opts;
   let url = `${apiBase()}${path}`;
   if (query) {
     const qs = Object.entries(query)
@@ -60,6 +73,8 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
   }
 
   let res: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     res = await fetch(url, {
       method,
@@ -68,9 +83,14 @@ export async function api<T>(path: string, opts: ApiOptions = {}): Promise<T> {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal,
     });
   } catch (err) {
+    // An abort is indistinguishable from a dead connection to the caller, and
+    // both want the same "you appear to be offline" handling.
     throw new NetworkError(err);
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!res.ok) {

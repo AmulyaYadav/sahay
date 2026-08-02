@@ -148,6 +148,12 @@ function DrawerPanel({ progress, onClose }: { progress: Animated.Value; onClose:
 
           <View style={{ height: 1, backgroundColor: th.colors.border, marginVertical: spacing.sm }} />
 
+          {/* Second route to the request flow, so it is reachable from any
+              screen and not only from Home. */}
+          {item('hand-heart', t('home.requestHelp'), go('/request/new'))}
+
+          <View style={{ height: 1, backgroundColor: th.colors.border, marginVertical: spacing.sm }} />
+
           {item('bell', t('notifications.title'), go('/settings/notifications'))}
           {item('shield', t('safety.guidance'), go('/settings/safety'))}
           {item('info', t('settings.legal'), go('/settings/legal'))}
