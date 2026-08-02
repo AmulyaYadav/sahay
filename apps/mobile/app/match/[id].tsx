@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -12,23 +13,23 @@ import {
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { MatchView, MeetingState, Message, ReportCategory } from '@sahay/shared';
+import type { MatchView, Message, ReportCategory } from '@sahay/shared';
 import { LIMITS, REPORT_CATEGORIES } from '@sahay/shared';
-import { api, idempotencyKey, isOfflineError } from '../../src/api';
+import { api, idempotencyKey } from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { qk, useCatalogue, useConversation, useMatch, useMessages } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
 import { categoryBySlug, categoryName } from '../../src/catalogue';
 import { formatTime } from '../../src/format';
-import { lineHeightFor, radius, spacing, TOUCH, useTheme } from '../../src/theme';
-import { Icon } from '../../src/components/icons';
+import { lineHeightFor, mockRadius, radius, spacing, TOUCH, useTheme } from '../../src/theme';
+import { Icon, type IconName } from '../../src/components/icons';
 import {
   Avatar,
-  Badge,
   Body,
   BodyBold,
   Button,
   Card,
+  Caption,
   Chip,
   ErrorView,
   Field,
@@ -38,10 +39,22 @@ import {
   MutedCaption,
   QuickReplyChip,
   Row,
-  Stepper,
 } from '../../src/components/ui';
-import { PeerSummary } from '../../src/components/PeerSummary';
 
+/**
+ * The conversation.
+ *
+ * It used to open on a stack of cards — peer profile, alias banner, meeting
+ * state, completion, report/block — with the messages themselves last and the
+ * composer squeezed underneath. The exchange is a conversation; everything else
+ * is a control, and controls belong behind one entry point rather than in front
+ * of the thing they act on.
+ *
+ * So: a header naming who you are talking to, one line of safety guidance, the
+ * messages, and two pills above the composer. Meeting state ("on my way",
+ * "arrived") is gone entirely — it duplicated in buttons what people were
+ * already saying in words.
+ */
 interface LocalMessage {
   clientMsgId: string;
   kind: 'text' | 'quick';
@@ -68,9 +81,9 @@ export default function MatchScreen() {
   const [draft, setDraft] = useState('');
   const [localMsgs, setLocalMsgs] = useState<LocalMessage[]>([]);
   const [busyState, setBusyState] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [confirmQty, setConfirmQty] = useState(1);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [reporting, setReporting] = useState(false);
+  const [showQuick, setShowQuick] = useState(false);
   const scrollRef = useRef<ScrollView | null>(null);
 
   const serverMsgs = messages.data?.items ?? [];
@@ -79,8 +92,7 @@ export default function MatchScreen() {
   useEffect(() => {
     if (serverMsgs.length === 0) return;
     setLocalMsgs((prev) => prev.filter((lm) => lm.status === 'failed'));
-    // Mark peer messages read (best effort).
-    if (conversationId && serverMsgs.some((m) => !m.mine && !m.readAt)) {
+    if (conversationId && serverMsgs.some((mm) => !mm.mine && !mm.readAt)) {
       void api(`/conversations/${conversationId}/read`, { method: 'POST', token }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,17 +104,8 @@ export default function MatchScreen() {
     [catalogue.data, m?.categorySlug],
   );
 
-  useEffect(() => {
-    if (m) setConfirmQty(m.qtyReserved);
-  }, [m?.qtyReserved]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  if (match.isLoading) return <LoadingView />;
-  if (match.isError || !m) return <ErrorView onRetry={() => void match.refetch()} />;
-
-  const active = m.status === 'active';
-  const chatOpen = conversation.data?.status === 'open';
-
   const refresh = () => {
+    if (!m) return;
     void qc.invalidateQueries({ queryKey: qk.match(m.id) });
     void qc.invalidateQueries({ queryKey: qk.activeMatches });
     void qc.invalidateQueries({ queryKey: qk.messages(conversationId ?? 'none') });
@@ -111,12 +114,20 @@ export default function MatchScreen() {
     void qc.invalidateQueries({ queryKey: ['inventory'] });
   };
 
-  /* ------------------------------------------------------- meeting states */
+  /* --------------------------------------------------------- completion */
 
-  const setMeeting = async (state: MeetingState) => {
+  const confirmExchange = async () => {
+    if (!m) return;
     setBusyState(true);
     try {
-      await api(`/matches/${m.id}/meeting`, { method: 'POST', token, body: { state } });
+      await api(`/matches/${m.id}/confirm`, {
+        method: 'POST',
+        token,
+        // The whole reserved quantity. Splitting it was a stepper nobody
+        // needed for an exchange where nothing is being paid for; the server
+        // still settles on the lower of the two figures if they ever differ.
+        body: { qty: m.qtyReserved, idempotencyKey: idempotencyKey() },
+      });
       refresh();
     } catch (err) {
       Alert.alert((err as Error).message || t('common.error'));
@@ -125,14 +136,49 @@ export default function MatchScreen() {
     }
   };
 
+  const askConfirmExchange = () => {
+    if (!m) return;
+    // Guard against a misclick: this settles stock and closes the chat.
+    Alert.alert(t('chat.confirmDoneTitle'), t('chat.confirmDoneBody', { alias: m.peer.alias }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('chat.confirmDoneCta'), onPress: () => void confirmExchange() },
+    ]);
+  };
+
+  /*
+    The other side went first. Ask once, when their confirmation arrives —
+    `asked` keeps a poll or a websocket refresh from re-opening the dialog on
+    every render while the person is reading it.
+  */
+  const asked = useRef(false);
+  useEffect(() => {
+    if (!m || m.status !== 'active') return;
+    if (!m.peerConfirmed || m.myConfirmedQty !== null || asked.current) return;
+    asked.current = true;
+    const item = `${Math.round(Number(m.qtyReserved))} ${categoryName(cat, locale)}`.trim();
+    Alert.alert(
+      t('chat.peerDoneTitle', { alias: m.peer.alias }),
+      m.role === 'requester'
+        ? t('chat.peerDoneReceived', { item })
+        : t('chat.peerDoneGiven', { item }),
+      [
+        { text: t('chat.notYet'), style: 'cancel' },
+        { text: t('common.confirm'), onPress: () => void confirmExchange() },
+      ],
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m?.peerConfirmed, m?.myConfirmedQty, m?.status]);
+
+  /* ------------------------------------------------------------- actions */
+
   const cancelMatch = (reason: 'changed_mind' | 'cannot_find' | 'no_longer_needed' | 'unsafe') => {
+    if (!m) return;
     const doCancel = async () => {
       setBusyState(true);
       try {
         await api(`/matches/${m.id}/cancel`, { method: 'POST', token, body: { reason } });
         refresh();
         if (reason === 'unsafe') {
-          // Offer block/report shortcuts immediately after an unsafe cancel.
           Alert.alert(t('match.cancelled'), t('safety.reportSuspicious'), [
             { text: t('common.block'), onPress: () => void blockPeer(false) },
             { text: t('common.report'), onPress: () => setReporting(true) },
@@ -151,13 +197,7 @@ export default function MatchScreen() {
         { text: t('common.confirm'), style: 'destructive', onPress: () => void doCancel() },
       ]);
     } else {
-      const reasonLabel =
-        reason === 'changed_mind'
-          ? t('match.reasonChangedMind')
-          : reason === 'cannot_find'
-            ? t('match.reasonCannotFind')
-            : t('match.reasonNoLongerNeeded');
-      Alert.alert(t('match.cancelTitle'), `${t('match.cancelReason')} ${reasonLabel}`, [
+      Alert.alert(t('match.cancelTitle'), t('chat.sheetEndBody'), [
         { text: t('common.back'), style: 'cancel' },
         { text: t('common.confirm'), style: 'destructive', onPress: () => void doCancel() },
       ]);
@@ -165,6 +205,7 @@ export default function MatchScreen() {
   };
 
   const blockPeer = async (ask: boolean) => {
+    if (!m) return;
     const doBlock = async () => {
       try {
         await api('/blocks', { method: 'POST', token, body: { matchId: m.id } });
@@ -203,282 +244,472 @@ export default function MatchScreen() {
       setLocalMsgs((prev) => prev.filter((lm) => lm.clientMsgId !== clientMsgId));
       void qc.invalidateQueries({ queryKey: qk.messages(conversationId) });
     } catch {
-      // Offline or server error: keep the bubble with tap-to-retry.
       setLocalMsgs((prev) =>
         prev.map((lm) => (lm.clientMsgId === clientMsgId ? { ...lm, status: 'failed' } : lm)),
       );
     }
   };
 
-  /* --------------------------------------------------------- completion */
+  if (match.isLoading) return <LoadingView />;
+  if (match.isError || !m) return <ErrorView onRetry={() => void match.refetch()} />;
 
-  const confirmCompletion = async () => {
-    setBusyState(true);
-    try {
-      await api(`/matches/${m.id}/confirm`, {
-        method: 'POST',
-        token,
-        body: { qty: confirmQty, idempotencyKey: idempotencyKey() },
-      });
-      setConfirming(false);
-      refresh();
-      // Partial fulfilment follow-up lives on the request (requester only).
-      if (m.role === 'requester' && confirmQty < m.qtyReserved) {
-        router.push(`/request/${m.requestId}`);
-      }
-    } catch (err) {
-      Alert.alert((err as Error).message || t('common.error'));
-    } finally {
-      setBusyState(false);
-    }
-  };
-
-  const meetingActions: { state: MeetingState; label: string }[] = [
-    { state: 'on_my_way', label: t('match.on_my_way') },
-    { state: 'arrived', label: t('match.arrived') },
-    { state: 'cannot_find', label: t('match.cannot_find') },
-  ];
-
+  const active = m.status === 'active';
+  const chatOpen = conversation.data?.status === 'open';
+  // Once both sides confirm, the exchange is over and the composer goes with
+  // it. The server keeps a grace window on the conversation for retention, not
+  // for more talking.
+  const canWrite = active && chatOpen;
   const quickReplies = conversation.data?.quickReplies ?? [];
+  const iConfirmed = m.myConfirmedQty !== null;
+
+  const sheetItem = (
+    icon: IconName,
+    tint: string,
+    title: string,
+    body: string,
+    onPress: () => void,
+  ) => (
+    <Pressable
+      key={title}
+      accessibilityRole="button"
+      onPress={() => {
+        setSheetOpen(false);
+        onPress();
+      }}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.md,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.lg,
+        backgroundColor: pressed ? th.colors.cardAlt : 'transparent',
+      })}
+    >
+      <Icon name={icon} size={22} color={tint} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Body>{title}</Body>
+        <MutedCaption>{body}</MutedCaption>
+      </View>
+      <Icon name="chevron-right" size={18} color={th.colors.textSecondary} />
+    </Pressable>
+  );
 
   return (
     <>
-      <Stack.Screen options={{ title: m.peer.alias }} />
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={insets.top + 56}
-      >
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={{ flex: 1, backgroundColor: th.colors.bg, paddingTop: insets.top }}>
+        {/* Header: who, and how far away. */}
+        <Row
+          gap={spacing.sm}
+          style={{
+            paddingHorizontal: spacing.md,
+            paddingBottom: spacing.sm,
+            alignItems: 'center',
+          }}
         >
-          {/* Peer + honest trust chips — shared with the match-found moment, so
-              the two cannot describe the same person differently. */}
-          <PeerSummary match={m} />
-
-          {/* My alias banner */}
-          <Card tone="accent" style={{ paddingVertical: spacing.md }}>
-            <Row gap={spacing.sm}>
-              <Avatar seed={m.myAlias} size={28} />
-              <Body style={{ flex: 1 }}>{t('match.youAre', { alias: m.myAlias })}</Body>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+            onPress={() => router.back()}
+            hitSlop={8}
+            style={{ width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="arrow-left" size={24} color={th.colors.text} />
+          </Pressable>
+          <Avatar seed={m.peer.avatarSeed} size={40} />
+          <View style={{ flex: 1 }}>
+            <H3 numberOfLines={1}>{m.peer.alias}</H3>
+            <Row gap={6} style={{ alignItems: 'center' }}>
+              <View
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: 4,
+                  backgroundColor: th.colors.success,
+                }}
+              />
+              <MutedCaption>{t(`proximity.${m.proximity}`)}</MutedCaption>
             </Row>
-          </Card>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('chat.more')}
+            onPress={() => setSheetOpen(true)}
+            hitSlop={8}
+            style={{ width: TOUCH, height: TOUCH, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Icon name="info" size={22} color={th.colors.text} />
+          </Pressable>
+        </Row>
 
-          {/* Status / meeting state */}
-          {!active ? (
-            <Card tone={m.status === 'completed' || m.status === 'partially_completed' ? 'accent' : 'warn'}>
-              <BodyBold>
+        {/* One line of guidance, always visible, linking to the full page. */}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push('/settings/safety')}
+          style={{
+            marginHorizontal: spacing.md,
+            marginBottom: spacing.sm,
+            padding: spacing.md,
+            borderRadius: mockRadius.input,
+            borderWidth: 1,
+            borderColor: th.colors.border,
+            backgroundColor: th.colors.surface,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+          }}
+        >
+          <Icon name="shield" size={18} color={th.colors.primary} />
+          <MutedCaption style={{ flex: 1 }}>{t('chat.safetyBanner')}</MutedCaption>
+          <Caption color={th.colors.primary}>{t('chat.safetyTips')}</Caption>
+          <Icon name="chevron-right" size={16} color={th.colors.primary} />
+        </Pressable>
+
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={insets.top}
+        >
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={{
+              paddingHorizontal: spacing.md,
+              paddingBottom: spacing.md,
+              gap: spacing.sm,
+            }}
+            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          >
+            {serverMsgs.map((msg, i) => (
+              <React.Fragment key={msg.id}>
+                <DaySeparator prev={serverMsgs[i - 1]?.createdAt} current={msg.createdAt} />
+                <MessageBubble msg={msg} />
+              </React.Fragment>
+            ))}
+            {localMsgs.map((lm) => (
+              <View key={lm.clientMsgId} style={{ alignItems: 'flex-end' }}>
+                <View
+                  style={{
+                    backgroundColor: lm.status === 'failed' ? th.colors.errorTint : th.colors.primary,
+                    borderRadius: radius.lg,
+                    borderBottomRightRadius: 4,
+                    padding: spacing.md,
+                    maxWidth: '82%',
+                    opacity: lm.status === 'sending' ? 0.7 : 1,
+                    gap: 2,
+                  }}
+                >
+                  <Body color={lm.status === 'failed' ? th.colors.text : '#FFFFFF'}>
+                    {lm.kind === 'quick' ? t(`chat.quick.${lm.body}`) : lm.body}
+                  </Body>
+                  {lm.status === 'failed' ? (
+                    <Button
+                      title={t('chat.sendFailed')}
+                      variant="ghost"
+                      small
+                      onPress={() => void send(lm.kind, lm.body, lm.clientMsgId)}
+                    />
+                  ) : (
+                    <MutedCaption color="#FFFFFFB3">{t('misc.sending')}</MutedCaption>
+                  )}
+                </View>
+              </View>
+            ))}
+
+            {!active ? (
+              <Muted center style={{ marginTop: spacing.md }}>
                 {m.status === 'completed' || m.status === 'partially_completed'
                   ? t('match.completed')
                   : m.status === 'disputed'
                     ? t('match.disputeNote')
                     : t('match.cancelled')}
-              </BodyBold>
-            </Card>
-          ) : (
-            <Card>
-              <BodyBold>{t('match.meetingState')}</BodyBold>
-              <Muted>
-                {t('match.yourStatus')}: {t(`match.${m.myMeetingState}`)} · {t('match.theirStatus')}
-                : {t(`match.${m.peerMeetingState}`)}
               </Muted>
-              <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-                {meetingActions.map((a) => (
-                  <Chip
-                    key={a.state}
-                    label={a.label}
-                    selected={m.myMeetingState === a.state}
-                    onPress={() => void setMeeting(a.state)}
-                  />
-                ))}
-              </Row>
-              <Row gap={spacing.sm} style={{ flexWrap: 'wrap' }}>
-                <Button
-                  title={t('common.cancel')}
-                  variant="ghost"
-                  small
-                  disabled={busyState}
-                  onPress={() =>
-                    cancelMatch(m.role === 'requester' ? 'no_longer_needed' : 'changed_mind')
-                  }
-                />
-                <Button
-                  title={t('match.unsafe')}
-                  variant="danger"
-                  small
-                  disabled={busyState}
-                  onPress={() => cancelMatch('unsafe')}
-                />
-              </Row>
-            </Card>
-          )}
+            ) : iConfirmed ? (
+              <Muted center style={{ marginTop: spacing.sm }}>
+                {t('chat.waitingPeer', { alias: m.peer.alias })}
+              </Muted>
+            ) : null}
+            {active && !chatOpen ? <Muted center>{t('chat.closed')}</Muted> : null}
+          </ScrollView>
 
-          {/* Completion */}
-          {active ? (
-            <Card>
-              {m.peerConfirmed ? <Badge label={t('sync.accepted')} tone="success" /> : null}
-              {m.myConfirmedQty !== null ? (
-                <Muted>
-                  {t('match.confirmQty')}: {m.myConfirmedQty} {t(`units.${m.unit}`)}
-                </Muted>
-              ) : confirming ? (
-                <View style={{ gap: spacing.md }}>
-                  <BodyBold>{t('match.confirmQty')}</BodyBold>
-                  <Stepper
-                    value={confirmQty}
-                    onChange={setConfirmQty}
-                    min={1}
-                    max={m.qtyReserved}
-                    unitLabel={t(`units.${m.unit}`)}
-                  />
-                  <Row gap={spacing.sm}>
-                    <Button
-                      title={t('common.confirm')}
-                      loading={busyState}
-                      onPress={() => void confirmCompletion()}
-                      style={{ flex: 1 }}
+          {/* Two pills: finish the exchange, or get help. Nothing else. */}
+          {canWrite ? (
+            <Row gap={spacing.sm} style={{ justifyContent: 'center', paddingBottom: spacing.sm }}>
+              {!iConfirmed ? (
+                <PillButton
+                  icon="check"
+                  label={t('chat.exchangeDone')}
+                  tint={th.colors.success}
+                  disabled={busyState}
+                  onPress={askConfirmExchange}
+                />
+              ) : null}
+              <PillButton
+                icon="shield"
+                label={t('chat.safety')}
+                tint={th.colors.textSecondary}
+                onPress={() => setSheetOpen(true)}
+              />
+            </Row>
+          ) : null}
+
+          {canWrite ? (
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: th.colors.border,
+                backgroundColor: th.colors.card,
+                paddingHorizontal: spacing.sm,
+                paddingTop: spacing.sm,
+                paddingBottom: insets.bottom + spacing.sm,
+                gap: spacing.sm,
+              }}
+            >
+              {showQuick ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: spacing.sm }}
+                >
+                  {quickReplies.map((qr) => (
+                    <QuickReplyChip
+                      key={qr}
+                      label={t(`chat.quick.${qr}`)}
+                      onPress={() => {
+                        setShowQuick(false);
+                        void send('quick', qr);
+                      }}
                     />
-                    <Button title={t('common.back')} variant="ghost" onPress={() => setConfirming(false)} />
-                  </Row>
-                </View>
-              ) : (
-                <Button
-                  title={m.role === 'requester' ? t('match.confirmReceipt') : t('match.confirmDelivery')}
-                  variant="success"
-                  onPress={() => setConfirming(true)}
+                  ))}
+                </ScrollView>
+              ) : null}
+              <Row gap={spacing.sm} style={{ alignItems: 'flex-end' }}>
+                {/* The quick replies used to sit above the composer permanently.
+                    Behind a button they stay one tap away without taking a
+                    whole row of the conversation. */}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('chat.quickReplies')}
+                  accessibilityState={{ expanded: showQuick }}
+                  onPress={() => setShowQuick((v) => !v)}
+                  style={({ pressed }) => ({
+                    width: TOUCH,
+                    height: TOUCH,
+                    borderRadius: TOUCH / 2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: pressed || showQuick ? th.colors.cardAlt : 'transparent',
+                    borderWidth: 1,
+                    borderColor: th.colors.border,
+                  })}
+                >
+                  <Icon name={showQuick ? 'close' : 'plus'} size={20} color={th.colors.text} />
+                </Pressable>
+                <TextInput
+                  allowFontScaling
+                  accessibilityLabel={t('chat.placeholder')}
+                  placeholder={t('chat.placeholder')}
+                  placeholderTextColor={th.colors.textSecondary}
+                  value={draft}
+                  onChangeText={(v) => setDraft(v.slice(0, LIMITS.maxMessageLength))}
+                  multiline
+                  style={{
+                    flex: 1,
+                    minHeight: TOUCH,
+                    maxHeight: 120,
+                    borderRadius: radius.xl,
+                    borderWidth: 1,
+                    borderColor: th.colors.border,
+                    backgroundColor: th.colors.canvas,
+                    color: th.colors.text,
+                    paddingHorizontal: spacing.lg,
+                    paddingVertical: spacing.md,
+                    fontSize: 14,
+                    lineHeight: lineHeightFor(14),
+                  }}
                 />
-              )}
-            </Card>
-          ) : null}
-
-          {/* Report / block */}
-          <Row gap={spacing.sm}>
-            <Button
-              title={t('common.report')}
-              variant="ghost"
-              small
-              onPress={() => setReporting((v) => !v)}
-            />
-            <Button title={t('common.block')} variant="ghost" small onPress={() => void blockPeer(true)} />
-          </Row>
-          {reporting ? (
-            <ReportCard matchId={m.id} onDone={() => setReporting(false)} />
-          ) : null}
-
-          {/* Chat */}
-          <MutedCaption>{t('chat.expiresNote')}</MutedCaption>
-          {serverMsgs.map((msg) => (
-            <MessageBubble key={msg.id} msg={msg} />
-          ))}
-          {localMsgs.map((lm) => (
-            <View key={lm.clientMsgId} style={{ alignItems: 'flex-end' }}>
-              <View
-                style={{
-                  backgroundColor: lm.status === 'failed' ? th.colors.errorTint : th.colors.success,
-                  borderRadius: radius.lg,
-                  borderBottomRightRadius: 4,
-                  padding: spacing.md,
-                  maxWidth: '80%',
-                  opacity: lm.status === 'sending' ? 0.7 : 1,
-                  gap: 2,
-                }}
-              >
-                <Body color={lm.status === 'failed' ? th.colors.text : th.colors.textOnColor}>
-                  {lm.kind === 'quick' ? t(`chat.quick.${lm.body}`) : lm.body}
-                </Body>
-                {lm.status === 'failed' ? (
-                  <Button
-                    title={t('chat.sendFailed')}
-                    variant="ghost"
-                    small
-                    onPress={() => void send(lm.kind, lm.body, lm.clientMsgId)}
-                  />
-                ) : (
-                  <MutedCaption color="#FFFFFFB3">{t('misc.sending')}</MutedCaption>
-                )}
-              </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t('common.ok')}
+                  accessibilityState={{ disabled: !draft.trim() }}
+                  disabled={!draft.trim()}
+                  onPress={() => void send('text', draft)}
+                  style={({ pressed }) => ({
+                    width: TOUCH,
+                    height: TOUCH,
+                    borderRadius: TOUCH / 2,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: th.colors.primary,
+                    opacity: !draft.trim() ? 0.4 : pressed ? 0.85 : 1,
+                  })}
+                >
+                  <Icon name="send" size={20} color="#FFFFFF" />
+                </Pressable>
+              </Row>
             </View>
-          ))}
-          {!chatOpen ? <Muted center>{t('chat.closed')}</Muted> : null}
-        </ScrollView>
+          ) : null}
+        </KeyboardAvoidingView>
+      </View>
 
-        {/* Quick replies + composer */}
-        {chatOpen ? (
-          <View
+      {/* Safety menu */}
+      <Modal
+        visible={sheetOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSheetOpen(false)}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t('common.close')}
+          onPress={() => setSheetOpen(false)}
+          style={{ flex: 1, backgroundColor: '#0B1220A6', justifyContent: 'flex-end' }}
+        >
+          <Pressable
             style={{
-              borderTopWidth: 1,
-              borderTopColor: th.colors.border,
-              backgroundColor: th.colors.card,
-              padding: spacing.sm,
-              paddingBottom: insets.bottom + spacing.sm,
-              gap: spacing.sm,
+              backgroundColor: th.colors.surface,
+              borderTopLeftRadius: mockRadius.sheet,
+              borderTopRightRadius: mockRadius.sheet,
+              paddingTop: spacing.sm,
+              paddingBottom: insets.bottom + spacing.md,
             }}
           >
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
-              {quickReplies.map((qr) => (
-                <QuickReplyChip
-                  key={qr}
-                  label={t(`chat.quick.${qr}`)}
-                  onPress={() => void send('quick', qr)}
-                />
-              ))}
-            </ScrollView>
-            <Row gap={spacing.sm} style={{ alignItems: 'flex-end' }}>
-              <TextInput
-                allowFontScaling
-                accessibilityLabel={t('chat.placeholder')}
-                placeholder={t('chat.placeholder')}
-                placeholderTextColor={th.colors.textSecondary}
-                value={draft}
-                onChangeText={(v) => setDraft(v.slice(0, LIMITS.maxMessageLength))}
-                multiline
-                style={{
-                  flex: 1,
-                  minHeight: TOUCH,
-                  maxHeight: 120,
-                  borderRadius: radius.xl,
-                  borderWidth: 1,
-                  borderColor: th.colors.border,
-                  backgroundColor: th.colors.canvas,
-                  color: th.colors.text,
-                  paddingHorizontal: spacing.lg,
-                  paddingVertical: spacing.md,
-                  fontSize: 14,
-                  lineHeight: lineHeightFor(14),
-                }}
-              />
-              {/* Circular green send button */}
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('common.ok')}
-                accessibilityState={{ disabled: !draft.trim() }}
-                disabled={!draft.trim()}
-                onPress={() => void send('text', draft)}
-                style={({ pressed }) => ({
-                  width: TOUCH,
-                  height: TOUCH,
-                  borderRadius: TOUCH / 2,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: th.colors.success,
-                  opacity: !draft.trim() ? 0.4 : pressed ? 0.85 : 1,
-                })}
-              >
-                <Icon name="send" size={20} color={th.colors.textOnColor} />
-              </Pressable>
-            </Row>
-          </View>
-        ) : null}
-      </KeyboardAvoidingView>
+            <View
+              style={{
+                alignSelf: 'center',
+                width: 40,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: th.colors.border,
+                marginBottom: spacing.sm,
+              }}
+            />
+            {sheetItem(
+              'alert',
+              th.colors.error,
+              t('chat.sheetUnsafe'),
+              t('chat.sheetUnsafeBody'),
+              () => cancelMatch('unsafe'),
+            )}
+            {sheetItem('flag', th.colors.warning, t('chat.sheetReport'), t('chat.sheetReportBody'), () =>
+              setReporting(true),
+            )}
+            {sheetItem('eye-off', th.colors.textSecondary, t('chat.sheetBlock'), t('chat.sheetBlockBody'), () =>
+              void blockPeer(true),
+            )}
+            {active
+              ? sheetItem('log-out', th.colors.textSecondary, t('chat.sheetEnd'), t('chat.sheetEndBody'), () =>
+                  cancelMatch(m.role === 'requester' ? 'no_longer_needed' : 'changed_mind'),
+                )
+              : null}
+            {sheetItem('info', th.colors.primary, t('chat.safetyTips'), t('chat.sheetTipsBody'), () =>
+              router.push('/settings/safety'),
+            )}
+            <MutedCaption style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}>
+              {t('chat.expiresNote')}
+            </MutedCaption>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* Report form */}
+      <Modal
+        visible={reporting}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setReporting(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: '#0B1220A6', justifyContent: 'flex-end' }}>
+          <ScrollView
+            style={{ maxHeight: '85%' }}
+            contentContainerStyle={{
+              backgroundColor: th.colors.bg,
+              borderTopLeftRadius: mockRadius.sheet,
+              borderTopRightRadius: mockRadius.sheet,
+              padding: spacing.lg,
+              paddingBottom: insets.bottom + spacing.lg,
+            }}
+          >
+            <ReportCard matchId={m.id} onDone={() => setReporting(false)} />
+          </ScrollView>
+        </View>
+      </Modal>
     </>
   );
 }
 
 /* ------------------------------------------------------------ components */
 
-/** Chat bubbles (§4.11): peer = surface + border, left, small avatar; mine = green, right. */
+/** Outlined pill above the composer (mockup: "Exchange done" / "Safety"). */
+function PillButton({
+  icon,
+  label,
+  tint,
+  onPress,
+  disabled,
+}: {
+  icon: IconName;
+  label: string;
+  tint: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  const th = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: spacing.sm,
+        minHeight: TOUCH,
+        paddingHorizontal: spacing.lg,
+        borderRadius: radius.pill,
+        borderWidth: 1,
+        borderColor: tint,
+        backgroundColor: pressed ? th.colors.cardAlt : 'transparent',
+        opacity: disabled ? 0.5 : 1,
+      })}
+    >
+      <Icon name={icon} size={18} color={tint} />
+      <BodyBold color={tint}>{label}</BodyBold>
+    </Pressable>
+  );
+}
+
+/** "Today" / "Yesterday" / a date, printed once when the day changes. */
+function DaySeparator({ prev, current }: { prev?: string; current: string }) {
+  const t = useT();
+  const th = useTheme();
+  const { locale } = useLocale();
+  const day = (iso: string) => new Date(iso).toDateString();
+  if (prev && day(prev) === day(current)) return null;
+
+  const d = new Date(current);
+  const today = new Date();
+  const yesterday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1);
+  const label =
+    day(current) === today.toDateString()
+      ? t('chat.today')
+      : day(current) === yesterday.toDateString()
+        ? t('chat.yesterday')
+        : d.toLocaleDateString(locale === 'hi' ? 'hi-IN' : 'en-IN', {
+            day: 'numeric',
+            month: 'short',
+          });
+
+  return (
+    <Row gap={spacing.md} style={{ alignItems: 'center', marginVertical: spacing.sm }}>
+      <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
+      <MutedCaption>{label}</MutedCaption>
+      <View style={{ flex: 1, height: 1, backgroundColor: th.colors.border }} />
+    </Row>
+  );
+}
+
+/** Peer bubbles left on the surface colour, mine right in primary. */
 function MessageBubble({ msg }: { msg: Message }) {
   const t = useT();
   const th = useTheme();
@@ -486,8 +717,7 @@ function MessageBubble({ msg }: { msg: Message }) {
   /*
     System messages store a translation key, not prose — the server writes
     'match.completed' and the like so the line reads in whichever language the
-    recipient has chosen. Only quick replies were being translated, so those
-    keys were printed verbatim into the conversation.
+    recipient has chosen.
   */
   const body =
     msg.kind === 'quick'
@@ -497,47 +727,46 @@ function MessageBubble({ msg }: { msg: Message }) {
         : msg.body;
 
   if (msg.kind === 'system') {
-    return <MutedCaption center>{body}</MutedCaption>;
+    return (
+      <MutedCaption center style={{ marginVertical: spacing.xs }}>
+        {body}
+      </MutedCaption>
+    );
   }
-  const ticks = msg.mine ? (msg.readAt ? '✓✓' : msg.deliveredAt ? '✓✓' : '✓') : '';
+
+  const ticks = msg.mine ? (msg.readAt || msg.deliveredAt ? '✓✓' : '✓') : '';
   const metaColor = msg.mine ? '#FFFFFFB3' : th.colors.textSecondary;
-  const tickColor = msg.mine && msg.readAt ? '#FFFFFF' : metaColor;
-  const bubble = (
-    <View
-      accessibilityLabel={`${msg.senderAlias}: ${body}`}
-      style={{
-        backgroundColor: msg.mine ? th.colors.success : th.colors.surface,
-        borderRadius: radius.lg,
-        borderBottomRightRadius: msg.mine ? 4 : radius.lg,
-        borderBottomLeftRadius: msg.mine ? radius.lg : 4,
-        borderWidth: msg.mine ? 0 : 1,
-        borderColor: th.colors.border,
-        padding: spacing.md,
-        maxWidth: '80%',
-        gap: 2,
-      }}
-    >
-      <Body color={msg.mine ? th.colors.textOnColor : th.colors.text}>{body}</Body>
-      <Row gap={4} style={{ alignSelf: 'flex-end' }}>
-        <MutedCaption color={metaColor}>{formatTime(msg.createdAt, locale)}</MutedCaption>
-        {ticks ? (
-          <MutedCaption
-            color={tickColor}
-            accessibilityLabel={msg.readAt ? t('misc.read') : t('misc.delivered')}
-          >
-            {ticks}
-          </MutedCaption>
-        ) : null}
-      </Row>
-    </View>
-  );
-  if (msg.mine) {
-    return <View style={{ alignItems: 'flex-end' }}>{bubble}</View>;
-  }
+
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
-      <Avatar seed={msg.senderAlias} size={24} />
-      {bubble}
+    <View style={{ alignItems: msg.mine ? 'flex-end' : 'flex-start' }}>
+      <View
+        accessibilityLabel={`${msg.senderAlias}: ${body}`}
+        style={{
+          backgroundColor: msg.mine ? th.colors.primary : th.colors.surface,
+          borderRadius: radius.lg,
+          borderBottomRightRadius: msg.mine ? 4 : radius.lg,
+          borderBottomLeftRadius: msg.mine ? radius.lg : 4,
+          borderWidth: msg.mine ? 0 : 1,
+          borderColor: th.colors.border,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          maxWidth: '82%',
+          gap: 2,
+        }}
+      >
+        <Body color={msg.mine ? '#FFFFFF' : th.colors.text}>{body}</Body>
+        <Row gap={4} style={{ alignSelf: 'flex-end' }}>
+          <MutedCaption color={metaColor}>{formatTime(msg.createdAt, locale)}</MutedCaption>
+          {ticks ? (
+            <MutedCaption
+              color={msg.readAt ? '#FFFFFF' : metaColor}
+              accessibilityLabel={msg.readAt ? t('misc.read') : t('misc.delivered')}
+            >
+              {ticks}
+            </MutedCaption>
+          ) : null}
+        </Row>
+      </View>
     </View>
   );
 }

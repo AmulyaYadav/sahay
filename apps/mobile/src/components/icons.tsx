@@ -29,7 +29,9 @@ export type IconName =
   | 'arrow-left'
   | 'close'
   | 'check'
-  | 'menu';
+  | 'menu'
+  | 'plus'
+  | 'flag';
 
 interface IconProps {
   name: IconName;
@@ -161,6 +163,18 @@ export function Icon({ name, size = 20, color, strokeWidth = 1.75 }: IconProps) 
             d="M19 12a7 7 0 0 0-.1-1.1l2-1.5-2-3.4-2.3 1a7 7 0 0 0-1.9-1.1L14.3 3h-4l-.4 2.4a7 7 0 0 0-1.9 1.1l-2.3-1-2 3.4 2 1.5a7 7 0 0 0 0 2.2l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 1.9 1.1l.4 2.4h4l.4-2.4a7 7 0 0 0 1.9-1.1l2.3 1 2-3.4-2-1.5c.06-.36.1-.73.1-1.1Z"
             {...common}
           />
+        </>
+      ) : null}
+      {name === 'flag' ? (
+        <>
+          <Path d="M5 21V4" {...common} />
+          <Path d="M5 4.5h11l-2 3.5 2 3.5H5" {...common} />
+        </>
+      ) : null}
+      {name === 'plus' ? (
+        <>
+          <Path d="M12 5v14" {...common} />
+          <Path d="M5 12h14" {...common} />
         </>
       ) : null}
       {name === 'hand-heart' ? (
