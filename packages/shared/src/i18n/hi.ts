@@ -416,9 +416,10 @@ export const hi: StringCatalog = {
   },
   matchFound: {
     title: 'मैच मिल गया!',
-    matchedFor: 'आपका मैच हुआ: {{item}}',
+    matchedForPrefix: 'आपका मैच हुआ:',
     body: 'सुरक्षित जगह पर मिलने के लिए चैट खोलें।',
     openChat: 'चैट खोलें',
+    openingIn: 'चैट {{count}} सेकंड में खुलेगी',
   },
   tabs: {
     home: 'होम', events: 'कार्यक्रम', supplies: 'सामान', profile: 'प्रोफ़ाइल',

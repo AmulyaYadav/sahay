@@ -414,9 +414,10 @@ export const en = {
   },
   matchFound: {
     title: 'Match found!',
-    matchedFor: "You've been matched for {{item}}",
+    matchedForPrefix: "You've been matched for",
     body: 'Open chat to coordinate and meet in a safe place.',
     openChat: 'Open chat',
+    openingIn: 'Opening chat in {{count}}s',
   },
   tabs: {
     home: 'Home', events: 'Events', supplies: 'Supplies', profile: 'Profile',

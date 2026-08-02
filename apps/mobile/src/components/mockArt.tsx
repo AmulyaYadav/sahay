@@ -7,7 +7,7 @@
  */
 import React from 'react';
 import { View } from 'react-native';
-import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, Rect } from 'react-native-svg';
 
 /** Scattered confetti behind the hero art (mockups 2, 7, 9). */
 export function Confetti({ size = 280, tint = ['#F2C14E', '#5A8DEE', '#43C08A', '#E4685D', '#9B7BEA'] }) {
@@ -138,34 +138,86 @@ export function SuccessCheckArt({ size = 96 }: { size?: number }) {
   );
 }
 
-/** Mockup 9 — two avatar circles with a heart between them. */
+/**
+ * Mockup 9 — two people facing out of circular frames, the Sahay mark between
+ * them where the mockup drew a heart.
+ *
+ * Each avatar is composed inside a clip of its own circle, so the shoulders can
+ * run off the bottom edge the way a cropped portrait does instead of being
+ * drawn as a dome sitting on top of the face. Everything is positioned from the
+ * head centre, which keeps the two figures consistent while their hair, skin
+ * and clothing differ.
+ */
+const FACES = [
+  { cx: 36, skin: '#F3C9A8', shade: '#E3B491', hair: '#2F5FCB', shirt: '#4C7DF0', bg: '#E8F0FE' },
+  { cx: 184, skin: '#F6D2B4', shade: '#E7BE9C', hair: '#3B3A55', shirt: '#E8A33D', bg: '#FDF0E2' },
+] as const;
+
 export function MatchAvatarsArt({ size = 220 }: { size?: number }) {
   return (
     <Svg width={size} height={size * 0.45} viewBox="0 0 220 100">
-      {[36, 184].map((cx, i) => (
-        <React.Fragment key={cx}>
-          <Circle cx={cx} cy={50} r={34} fill="#FFFFFF" />
-          <Circle cx={cx} cy={50} r={30} fill={i === 0 ? '#F3C9A8' : '#F6D2B4'} />
-          {/* hair / cap */}
-          <Path
-            d={
-              i === 0
-                ? `M${cx - 30} 44a30 30 0 0160 0c0-16-13-24-30-24s-30 8-30 24z`
-                : `M${cx - 30} 46a30 30 0 0160 0c0-18-13-26-30-26s-30 8-30 26z`
-            }
-            fill={i === 0 ? '#2F5FCB' : '#3B3A55'}
-          />
-          {/* eyes */}
-          <Circle cx={cx - 9} cy={50} r={2.6} fill="#3A3A46" />
-          <Circle cx={cx + 9} cy={50} r={2.6} fill="#3A3A46" />
-          {/* smile */}
-          <Path d={`M${cx - 8} 60q8 7 16 0`} stroke="#3A3A46" strokeWidth={2.4} strokeLinecap="round" fill="none" />
-          {/* shoulders */}
-          <Path d={`M${cx - 26} 82a26 26 0 0152 0z`} fill={i === 0 ? '#E8B48F' : '#EFC49F'} />
-        </React.Fragment>
-      ))}
-      {/* heart */}
-      <Path d="M110 66c-11-8-19-13-19-22a9.5 9.5 0 0119-4 9.5 9.5 0 0119 4c0 9-8 14-19 22z" fill="#F2716F" />
+      <Defs>
+        {FACES.map((f) => (
+          <ClipPath key={f.cx} id={`avatar-${f.cx}`}>
+            <Circle cx={f.cx} cy={50} r={30} />
+          </ClipPath>
+        ))}
+      </Defs>
+
+      {FACES.map((f, i) => {
+        const hy = 44; // head centre
+        return (
+          <React.Fragment key={f.cx}>
+            {/* White ring, as the mockup frames each portrait. */}
+            <Circle cx={f.cx} cy={50} r={34} fill="#FFFFFF" />
+            <G clipPath={`url(#avatar-${f.cx})`}>
+              <Circle cx={f.cx} cy={50} r={30} fill={f.bg} />
+              {/* Shoulders first, then neck, then head — back to front. */}
+              <Ellipse cx={f.cx} cy={88} rx={27} ry={22} fill={f.shirt} />
+              <Rect x={f.cx - 5} y={54} width={10} height={12} fill={f.shade} />
+              <Circle cx={f.cx} cy={hy} r={16} fill={f.skin} />
+              {/* Hair sits over the top half of the head; the cap gets a brim. */}
+              <Path d={`M${f.cx - 16} ${hy} A16 16 0 0 1 ${f.cx + 16} ${hy} Z`} fill={f.hair} />
+              {i === 0 ? (
+                <Rect x={f.cx - 19} y={hy - 2} width={38} height={4} rx={2} fill={f.hair} />
+              ) : (
+                <>
+                  <Rect x={f.cx - 16} y={hy - 2} width={4} height={9} rx={2} fill={f.hair} />
+                  <Rect x={f.cx + 12} y={hy - 2} width={4} height={9} rx={2} fill={f.hair} />
+                </>
+              )}
+              <Circle cx={f.cx - 6} cy={hy + 3} r={1.9} fill="#3A3A46" />
+              <Circle cx={f.cx + 6} cy={hy + 3} r={1.9} fill="#3A3A46" />
+              <Path
+                d={`M${f.cx - 5} ${hy + 9}q5 4.5 10 0`}
+                stroke="#3A3A46"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                fill="none"
+              />
+            </G>
+          </React.Fragment>
+        );
+      })}
+
+      {/*
+        The Sahay mark, where the mockup drew a heart. A white disc keeps the
+        brand blue legible on the dark scrim behind this screen and reads as the
+        logo rather than as decoration; the path is the same 24x24 'hand-heart'
+        the wordmark uses, scaled to fit.
+      */}
+      <Circle cx={110} cy={50} r={25} fill="#FFFFFF" />
+      <G
+        transform="translate(88 28) scale(1.833)"
+        fill="none"
+        stroke="#2F6BE4"
+        strokeWidth={1.9}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <Path d="M12 8.8s-2.6-3-4.6-1.4c-2 1.6-.4 4 1.4 5.5L12 15.5l3.2-2.6c1.8-1.5 3.4-3.9 1.4-5.5C14.6 5.8 12 8.8 12 8.8Z" />
+        <Path d="M3 18.5h4l3.5 2h6" />
+      </G>
     </Svg>
   );
 }

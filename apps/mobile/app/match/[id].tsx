@@ -40,6 +40,7 @@ import {
   Row,
   Stepper,
 } from '../../src/components/ui';
+import { PeerSummary } from '../../src/components/PeerSummary';
 
 interface LocalMessage {
   clientMsgId: string;
@@ -253,30 +254,9 @@ export default function MatchScreen() {
           contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
-          {/* Peer + honest trust chips */}
-          <Card>
-            <Row gap={spacing.md}>
-              <Avatar seed={m.peer.avatarSeed} />
-              <View style={{ flex: 1, gap: spacing.xs }}>
-                <H3>{m.peer.alias}</H3>
-                <Row gap={spacing.xs} style={{ flexWrap: 'wrap' }}>
-                  <Badge label={t(`reliability.${m.peer.reliabilityLabel}`)} tone="accent" />
-                  <Badge label={t('reliability.completedAssists', { count: m.peer.completedAssists })} />
-                  <Badge label={t('reliability.memberSince', { month: m.peer.memberSince })} />
-                  {m.peer.emailVerifiedLabel ? (
-                    <Badge label={t('reliability.emailVerified')} tone="success" />
-                  ) : (
-                    <Badge label={t('reliability.notVerified')} tone="warn" />
-                  )}
-                </Row>
-              </View>
-            </Row>
-            <MutedCaption>{t('reliability.verifiedMeaning')}</MutedCaption>
-            <Muted>
-              {categoryName(cat, locale)} · {m.qtyReserved} {t(`units.${m.unit}`)} ·{' '}
-              {t(`proximity.${m.proximity}`)}
-            </Muted>
-          </Card>
+          {/* Peer + honest trust chips — shared with the match-found moment, so
+              the two cannot describe the same person differently. */}
+          <PeerSummary match={m} />
 
           {/* My alias banner */}
           <Card tone="accent" style={{ paddingVertical: spacing.md }}>

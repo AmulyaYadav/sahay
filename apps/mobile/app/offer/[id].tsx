@@ -83,7 +83,10 @@ export default function OfferScreen() {
       void qc.invalidateQueries({ queryKey: qk.activeMatches });
       if (alsoStopReceiving) void qc.invalidateQueries({ queryKey: ['availability'] });
       if (accept && res.match) {
-        router.replace(`/match/${res.match.id}`);
+        // Via the match-found moment, not straight into the conversation. The
+        // helper accepted an offer that named a category and a quantity; this
+        // is where they find out who they are about to meet.
+        router.replace(`/match-found/${res.match.id}`);
       } else {
         close();
       }

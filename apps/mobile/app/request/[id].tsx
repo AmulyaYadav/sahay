@@ -10,7 +10,7 @@ import { useLocale, useT } from '../../src/locale';
 import { categoryBySlug, categoryGlyph, categoryName } from '../../src/catalogue';
 import { minutesUntil } from '../../src/format';
 import { spacing, useTheme } from '../../src/theme';
-import { LanternVignette } from '../../src/components/vignettes';
+import { hasSeenMatchFound } from '../../src/matchFoundSeen';
 import {
   Badge,
   Body,
@@ -27,6 +27,7 @@ import {
   Row,
   Title,
 } from '../../src/components/ui';
+import { PeerSummary } from '../../src/components/PeerSummary';
 
 /** Live matching screen: state comes from the server only — no fake progress. */
 export default function RequestScreen() {
@@ -45,6 +46,25 @@ export default function RequestScreen() {
   const matchedId =
     request.data?.status === 'matched' ? request.data.activeMatchId : null;
   const match = useMatch(matchedId ?? undefined);
+
+  /*
+    This screen polls while a request is searching, so it is where the
+    requester is standing when a helper accepts. Send them to the match-found
+    moment the first time — the same one the helper now sees — rather than
+    swapping in a smaller version of it inline.
+
+    Once per match, recorded on that screen: it replaces itself with the
+    conversation, and backing out of the conversation returns here to a request
+    that is still `matched`, which would otherwise bounce straight back.
+  */
+  const pushed = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (!matchedId || pushed.current === matchedId) return;
+    pushed.current = matchedId;
+    void hasSeenMatchFound(matchedId).then((seen) => {
+      if (!seen) router.push(`/match-found/${matchedId}`);
+    });
+  }, [matchedId, router]);
 
   if (request.isLoading) return <LoadingView />;
   if (request.isError || !request.data)
@@ -82,18 +102,14 @@ export default function RequestScreen() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         {/* Match found moment (§4.10) */}
         {r.status === 'matched' && r.activeMatchId ? (
-          <View style={{ gap: spacing.lg, paddingVertical: spacing.lg }}>
-            <LanternVignette />
-            <Title center>{t('match.found')}</Title>
-            {match.data ? (
-              <>
-                <Body center>{t('match.canHelp', { alias: match.data.peer.alias })}</Body>
-                <Muted center>
-                  {match.data.qtyReserved} {t(`units.${match.data.unit}`)} ·{' '}
-                  {t(`proximity.${match.data.proximity}`)}
-                </Muted>
-              </>
-            ) : null}
+          /*
+            Returning here after the match-found moment, so this is a way back
+            into the exchange rather than a second celebration — same peer card,
+            no confetti.
+          */
+          <View style={{ gap: spacing.md }}>
+            <Title>{t('match.found')}</Title>
+            {match.data ? <PeerSummary match={match.data} /> : null}
             <Button
               title={t('match.startChat')}
               onPress={() => router.push(`/match/${r.activeMatchId}`)}
