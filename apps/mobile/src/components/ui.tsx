@@ -802,7 +802,13 @@ export function Stepper({
         backgroundColor: pressed ? th.colors.primaryTint : th.colors.surface,
       })}
     >
-      <Text allowFontScaling style={{ fontSize: 22, color: th.colors.primary, fontWeight: '700' }}>
+      {/* Capped: the button is a fixed 44pt box, so past about 1.5x the glyph
+          clips instead of growing. The control stays a 44pt target either way. */}
+      <Text
+        allowFontScaling
+        maxFontSizeMultiplier={1.5}
+        style={{ fontSize: 22, color: th.colors.primary, fontWeight: '700' }}
+      >
         {label}
       </Text>
     </Pressable>

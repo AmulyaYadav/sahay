@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Alert, PixelRatio, Pressable, ScrollView, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { Locale } from '@sahay/shared';
@@ -38,6 +38,17 @@ export default function CarryItems() {
 
   const categories = catalogue.data?.categories ?? [];
   const bySlug = useMemo(() => new Map(categories.map((c) => [c.slug, c])), [categories]);
+
+  /**
+   * Whether to give each item's name a line of its own.
+   *
+   * The stepper's width is fixed in points, so raising the device font size
+   * takes width from the name without giving any back. Past roughly 1.3× there
+   * is not enough left for a name like "Packaged water container" to wrap
+   * sensibly, and it degrades to a character or two per line. Below that the
+   * single row of the mockup is kept.
+   */
+  const stackRows = PixelRatio.getFontScale() >= 1.3;
 
   // Suggested items first, then anything the person added by hand.
   const slugs = useMemo(() => {
@@ -118,22 +129,41 @@ export default function CarryItems() {
         </View>
 
         <View style={{ gap: spacing.sm, marginTop: spacing.xs }}>
-          {slugs.map((slug) => (
-            <MockCard key={slug} style={{ padding: spacing.md }}>
-              {/* `gap: sm` and a compact stepper: the full-size control plus
-                  md gaps left the name too little width to wrap in. */}
-              <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
-                <CategoryEmoji slug={slug} size={22} />
-                <BodyBold style={{ flex: 1 }}>{name(slug)}</BodyBold>
-                <Stepper
-                  compact
-                  value={qty[slug] ?? 0}
-                  min={0}
-                  onChange={(v) => setQty((q) => ({ ...q, [slug]: v }))}
-                />
-              </Row>
-            </MockCard>
-          ))}
+          {slugs.map((slug) => {
+            const stepper = (
+              <Stepper
+                compact
+                value={qty[slug] ?? 0}
+                min={0}
+                onChange={(v) => setQty((q) => ({ ...q, [slug]: v }))}
+              />
+            );
+            return (
+              <MockCard key={slug} style={{ padding: spacing.md }}>
+                {stackRows ? (
+                  // Large system font: the name gets the full card width and the
+                  // stepper sits beneath it. Sharing a line cannot work here —
+                  // the control's width is fixed in points while the text grows,
+                  // so the name is left wrapping one or two characters per line.
+                  <View style={{ gap: spacing.sm }}>
+                    <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
+                      <CategoryEmoji slug={slug} size={22} />
+                      <BodyBold style={{ flex: 1 }}>{name(slug)}</BodyBold>
+                    </Row>
+                    <Row style={{ justifyContent: 'flex-end' }}>{stepper}</Row>
+                  </View>
+                ) : (
+                  // Default: one row, as the mockup draws it. `gap: sm` and the
+                  // compact stepper keep a long name off a narrow phone's edge.
+                  <Row gap={spacing.sm} style={{ alignItems: 'center' }}>
+                    <CategoryEmoji slug={slug} size={22} />
+                    <BodyBold style={{ flex: 1 }}>{name(slug)}</BodyBold>
+                    {stepper}
+                  </Row>
+                )}
+              </MockCard>
+            );
+          })}
         </View>
 
         <Pressable accessibilityRole="button" onPress={addAnother} style={{ paddingVertical: spacing.sm }}>
