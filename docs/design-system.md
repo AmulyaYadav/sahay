@@ -48,7 +48,7 @@ Category chip tints (icon sits in a 40–44px rounded-12 square, icon colored, b
 Need/shortage pill mapping: `critical_shortage` error-tint/error text · `high_need`
 error-tint/`#C2410C` · `moderate_need` warning-tint/warning · `adequate` success-tint/success ·
 `possible_surplus` primary-tint/primary · `unknown` `#EEF1F5`/text-secondary.
-Pills: 12/16 medium, padding 2px 10px, fully rounded, text + tint only (no borders).
+Pills: 12/19 medium, padding 2px 10px, fully rounded, text + tint only (no borders).
 
 ## 2. Typography
 
@@ -57,12 +57,23 @@ Mobile: system font (SF/Roboto) — weights matter more than the family.
 
 | Role | Size/line | Weight |
 |---|---|---|
-| H1 | 28/36 | 700 |
-| H2 | 20/28 | 600 |
-| H3 | 16/24 | 600 |
-| Body | 14/20 | 400 |
-| Body-medium | 14/20 | 500 (buttons, list titles) |
-| Caption | 12/16 | 500 |
+| H1 | 28/45 | 700 |
+| H2 | 20/32 | 600 |
+| H3 | 16/26 | 600 |
+| Body | 14/22 | 400 |
+| Body-medium | 14/22 | 500 (buttons, list titles) |
+| Caption | 12/19 | 500 |
+
+Line height is 1.6x the size throughout, wider than the Latin-only ratios this
+table used to carry (28/36, 14/20, 12/16). On Android, React Native clamps the
+line box to exactly the given lineHeight and raises the ascent when the font
+needs more — clipping the tops of glyphs instead of spacing lines apart. The
+ratio to clear is the font's own (ascent + descent) / em: about 1.25 for Latin,
+about 1.54 for Noto Sans Devanagari. At the old ratios Hindi was cut off along
+its upper matras. Mobile derives every value from `lineHeightFor()` in
+`apps/mobile/src/theme.ts`; the web has no equivalent defect, since CSS
+overflows the line box rather than clipping it, but it follows the same numbers
+so the two stay recognisably one design.
 
 Numbers that matter (countdowns, stats) get 24–32/700 tabular-nums.
 
@@ -119,7 +130,7 @@ Numbers that matter (countdowns, stats) get 24–32/700 tabular-nums.
     caption label), then menu list rows (icon + label + chevron), destructive-soft
     log out.
 13. **Bottom tab bar (mobile) / header nav (web):** Home, Events, Supplies, Profile;
-    22px icons + 12/16 labels; active primary, inactive text-secondary; surface bg,
+    22px icons + 12/19 labels; active primary, inactive text-secondary; surface bg,
     top border.
 
 ## 5. Illustrations & icons

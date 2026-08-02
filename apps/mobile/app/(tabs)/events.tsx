@@ -7,7 +7,7 @@ import { useAuth } from '../../src/auth';
 import { useEventSearch } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
 import { shortDateRange } from '../../src/format';
-import { mockRadius, spacing, useTheme } from '../../src/theme';
+import { lineHeightFor, mockRadius, spacing, useTheme } from '../../src/theme';
 import { ActiveBadge, MetaRow, MockCard } from '../../src/components/mock';
 import { AppHeader, HeaderTagline } from '../../src/components/AppHeader';
 import { Icon } from '../../src/components/icons';
@@ -107,7 +107,7 @@ export default function EventsScreen() {
       renderItem={({ item }) => (
         <MockCard onPress={() => router.push(`/event/${item.id}`)} accessibilityLabel={item.title}>
           <Row style={{ alignItems: 'flex-start', gap: spacing.sm }}>
-            <BodyBold style={{ flex: 1, fontSize: 17, lineHeight: 24 }}>{item.title}</BodyBold>
+            <BodyBold style={{ flex: 1, fontSize: 17, lineHeight: lineHeightFor(17) }}>{item.title}</BodyBold>
             {item.status === 'active' ? <ActiveBadge label={t('events.activeNow')} /> : null}
           </Row>
           <View style={{ gap: spacing.xs }}>

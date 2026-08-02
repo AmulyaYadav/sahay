@@ -23,7 +23,7 @@ import {
   tabularNums,
   TOUCH,
   type as typeScale,
-  lineHeights,
+  lineHeightFor,
   useTheme,
   type Theme,
 } from '../theme';
@@ -56,7 +56,7 @@ function makeText(size: number, weight: TextStyle['fontWeight'] = '400') {
             fontWeight: weight,
             color: color ?? th.colors.text,
             textAlign: center ? 'center' : undefined,
-            lineHeight: lineHeights[size] ?? Math.round(size * 1.45),
+            lineHeight: lineHeightFor(size),
           },
           style,
         ]}
@@ -203,7 +203,7 @@ export function Button({
       {icon && !loading ? <Icon name={icon} size={18} color={palette.fg} /> : null}
       <Text
         allowFontScaling
-        style={{ color: palette.fg, fontSize: typeScale.body, lineHeight: 20, fontWeight: '500' }}
+        style={{ color: palette.fg, fontSize: typeScale.body, lineHeight: lineHeightFor(typeScale.body), fontWeight: '500' }}
       >
         {title}
       </Text>
@@ -293,7 +293,7 @@ export function Chip({
       style={{
         color: selected ? fg : c.text,
         fontSize: typeScale.label,
-        lineHeight: 20,
+        lineHeight: lineHeightFor(typeScale.label),
         fontWeight: '500',
       }}
     >
@@ -354,7 +354,7 @@ export function QuickReplyChip({
     >
       <Text
         allowFontScaling
-        style={{ color: th.colors.text, fontSize: typeScale.label, lineHeight: 20, fontWeight: '500' }}
+        style={{ color: th.colors.text, fontSize: typeScale.label, lineHeight: lineHeightFor(typeScale.label), fontWeight: '500' }}
       >
         {label}
       </Text>
@@ -393,7 +393,7 @@ export function Badge({
     >
       <Text
         allowFontScaling
-        style={{ color: map.fg, fontSize: typeScale.caption, lineHeight: 16, fontWeight: '500' }}
+        style={{ color: map.fg, fontSize: typeScale.caption, lineHeight: lineHeightFor(typeScale.caption), fontWeight: '500' }}
       >
         {label}
       </Text>
@@ -417,7 +417,7 @@ export function NeedPill({ level, label }: { level: string; label: string }) {
     >
       <Text
         allowFontScaling
-        style={{ color: fg, fontSize: typeScale.caption, lineHeight: 16, fontWeight: '500' }}
+        style={{ color: fg, fontSize: typeScale.caption, lineHeight: lineHeightFor(typeScale.caption), fontWeight: '500' }}
       >
         {label}
       </Text>
@@ -660,7 +660,7 @@ export function StatStrip({
           <Text
             allowFontScaling
             style={[
-              { fontSize: 20, lineHeight: 28, fontWeight: '700', color: th.colors.text },
+              { fontSize: 20, lineHeight: lineHeightFor(20), fontWeight: '700', color: th.colors.text },
               tabularNums,
             ]}
           >
@@ -711,7 +711,7 @@ export function CountdownCard({
       <Text
         allowFontScaling
         style={[
-          { fontSize: 30, lineHeight: 38, fontWeight: '700', color: urgent ? th.colors.error : th.colors.text },
+          { fontSize: 30, lineHeight: lineHeightFor(30), fontWeight: '700', color: urgent ? th.colors.error : th.colors.text },
           tabularNums,
         ]}
       >
@@ -835,7 +835,7 @@ export function Stepper({
           allowFontScaling
           accessibilityLabel={`${value} ${unitLabel ?? ''}`}
           style={[
-            { fontSize: 20, lineHeight: 28, fontWeight: '700', color: th.colors.text },
+            { fontSize: 20, lineHeight: lineHeightFor(20), fontWeight: '700', color: th.colors.text },
             tabularNums,
           ]}
         >

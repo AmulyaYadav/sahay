@@ -20,7 +20,7 @@ import { qk, useCatalogue, useConversation, useMatch, useMessages } from '../../
 import { useLocale, useT } from '../../src/locale';
 import { categoryBySlug, categoryName } from '../../src/catalogue';
 import { formatTime } from '../../src/format';
-import { radius, spacing, TOUCH, useTheme } from '../../src/theme';
+import { lineHeightFor, radius, spacing, TOUCH, useTheme } from '../../src/theme';
 import { Icon } from '../../src/components/icons';
 import {
   Avatar,
@@ -463,7 +463,7 @@ export default function MatchScreen() {
                   paddingHorizontal: spacing.lg,
                   paddingVertical: spacing.md,
                   fontSize: 14,
-                  lineHeight: 20,
+                  lineHeight: lineHeightFor(14),
                 }}
               />
               {/* Circular green send button */}

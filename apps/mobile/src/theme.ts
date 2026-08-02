@@ -189,7 +189,24 @@ export const type = {
   caption: 12,
 } as const;
 
-export const lineHeights: Record<number, number> = { 28: 36, 20: 28, 16: 24, 14: 20, 12: 16 };
+/**
+ * Line height for a given font size.
+ *
+ * 1.6x, not the tighter Latin ratios the type scale originally used (28/36,
+ * 14/20, 12/16). React Native on Android does not treat lineHeight as a
+ * minimum: CustomLineHeightSpan.chooseHeight clamps the line box to exactly
+ * this value, and when the font needs more it raises the ascent — cutting the
+ * tops off the glyphs rather than spacing the lines further apart.
+ *
+ * The ratio that has to be cleared is the font's own (ascent + descent) / em.
+ * For Latin that is about 1.25, which every old value cleared. Noto Sans
+ * Devanagari is about 1.54, which none of them did, so the tops of हिन्दी were
+ * cut off. 1.6 clears it with a little to spare. Hindi is a first-class locale
+ * here, so the scale has to fit both scripts.
+ */
+export function lineHeightFor(size: number): number {
+  return Math.round(size * 1.6);
+}
 
 /** Minimum touch target (pt). */
 export const TOUCH = 44;

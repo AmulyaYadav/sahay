@@ -5,7 +5,7 @@ import { api } from '../../src/api';
 import { useAuth } from '../../src/auth';
 import { useEvent } from '../../src/hooks';
 import { useLocale, useT } from '../../src/locale';
-import { spacing } from '../../src/theme';
+import { lineHeightFor, spacing } from '../../src/theme';
 import { Body, BodyBold, Title } from '../../src/components/ui';
 import { GradientScreen, SwipeChoiceSheet, TopBar } from '../../src/components/mock';
 import { ArtFrame, CalendarArt, Confetti } from '../../src/components/mockArt';
@@ -90,7 +90,7 @@ export default function ConfirmAttendance() {
           <Title center color="#FFFFFF">
             {t(occurrence?.isToday ? 'attend.today' : 'attend.tomorrow')}
           </Title>
-          <BodyBold color="#FFFFFF" style={{ textAlign: 'center', fontSize: 17, lineHeight: 24 }}>
+          <BodyBold color="#FFFFFF" style={{ textAlign: 'center', fontSize: 17, lineHeight: lineHeightFor(17) }}>
             {event.data?.title ?? ''}
           </BodyBold>
           {occurrence ? (
