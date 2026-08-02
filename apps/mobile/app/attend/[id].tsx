@@ -10,7 +10,7 @@ import { Body, BodyBold, Title } from '../../src/components/ui';
 import { GradientScreen, SwipeChoiceSheet, TopBar } from '../../src/components/mock';
 import { ArtFrame, CalendarArt, Confetti } from '../../src/components/mockArt';
 import { formatDateTime } from '../../src/format';
-import { markAttendanceAnswered } from '../../src/attendancePrompt';
+import { markAttendanceAnswered, relevantOccurrence } from '../../src/attendancePrompt';
 import { forgetJoinedEvent } from '../../src/storage';
 
 /**
@@ -27,6 +27,10 @@ export default function ConfirmAttendance() {
   const { token } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
+  // Which day this prompt is about — not necessarily the event's original start.
+  const occurrence = event.data
+    ? relevantOccurrence(event.data.startsAt, event.data.endsAt)
+    : null;
 
   const next = async () => {
     await markAttendanceAnswered(id);
@@ -84,14 +88,14 @@ export default function ConfirmAttendance() {
 
         <View style={{ gap: spacing.sm, paddingHorizontal: spacing.xl }}>
           <Title center color="#FFFFFF">
-            {t('attend.tomorrow')}
+            {t(occurrence?.isToday ? 'attend.today' : 'attend.tomorrow')}
           </Title>
           <BodyBold color="#FFFFFF" style={{ textAlign: 'center', fontSize: 17, lineHeight: 24 }}>
             {event.data?.title ?? ''}
           </BodyBold>
-          {event.data ? (
+          {occurrence ? (
             <Body color="#FFFFFFB3" style={{ textAlign: 'center' }}>
-              {formatDateTime(event.data.startsAt, locale)}
+              {formatDateTime(occurrence.when.toISOString(), locale)}
             </Body>
           ) : null}
         </View>

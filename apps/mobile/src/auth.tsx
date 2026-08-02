@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearAccountScopedState, K } from './storage';
 import React, {
   createContext,
   useCallback,
@@ -67,6 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (session: AuthSession) => {
+    // A different account on the same device must not inherit the previous
+    // one's joined events, cached data or push registration.
+    const previous = await AsyncStorage.getItem(K.lastUserId).catch(() => null);
+    if (previous && previous !== session.user.id) await clearAccountScopedState();
+    await AsyncStorage.setItem(K.lastUserId, session.user.id).catch(() => {});
+
     await setToken(session.token);
     setTokenState(session.token);
     setMe(session.user);
@@ -82,6 +90,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       await clearToken();
+      // Leaving the device clean is the point: the next person to sign in here
+      // should see nothing of this account.
+      await clearAccountScopedState();
       setTokenState(null);
       setMe(null);
     },

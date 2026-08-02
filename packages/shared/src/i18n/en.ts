@@ -356,6 +356,7 @@ export const en = {
   },
   attend: {
     tomorrow: "Tomorrow's the day!",
+    today: "Today's the day!",
     removedTitle: 'Removed from this event',
     removedBody: 'This was the last day, so we have taken you off the attendee list. You can join again any time.',
     swipeTop: 'Swipe right if',

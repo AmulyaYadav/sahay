@@ -54,3 +54,27 @@ export async function shouldAskAttendance(event: {
   if (!happeningToday(event.startsAt, event.endsAt)) return false;
   return !(await answeredToday(event.id));
 }
+
+/**
+ * The day this prompt is about: today if the event is already running or starts
+ * later today, otherwise its next start. Used for the heading and the date, both
+ * of which previously showed the event's original startsAt — so a multi-day event
+ * already under way said "Tomorrow's the day!" above a date in the past.
+ */
+export function relevantOccurrence(
+  startsAt: string,
+  endsAt: string,
+  now: Date = new Date(),
+): { when: Date; isToday: boolean } {
+  const occ = new Date(startsAt);
+  const end = new Date(endsAt);
+  while (occ.getTime() < now.getTime() && occ.getTime() < end.getTime()) {
+    occ.setDate(occ.getDate() + 1);
+  }
+  const running = happeningToday(startsAt, endsAt, now);
+  const sameDay =
+    occ.getFullYear() === now.getFullYear() &&
+    occ.getMonth() === now.getMonth() &&
+    occ.getDate() === now.getDate();
+  return { when: occ, isToday: running && (sameDay || new Date(startsAt) <= now) };
+}
