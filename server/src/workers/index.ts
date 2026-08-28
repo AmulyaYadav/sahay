@@ -5,7 +5,7 @@
  */
 import { Worker } from 'bullmq';
 import { getRedis } from '../lib/redis.js';
-import { retentionQueue, type RetentionJob } from '../queues.js';
+import { KEEP_COMPLETED, KEEP_FAILED, retentionQueue, type RetentionJob } from '../queues.js';
 import { processDataRequest } from './data-request.js';
 import { processMatch, processOfferTimeout } from './matching.js';
 import { processNotify } from './notify.js';
@@ -29,12 +29,20 @@ const RETENTION_EVERY_MS = 60_000;
 
 export async function startWorkers(): Promise<() => Promise<void>> {
   const connection = getRedis();
+  // The worker does the trimming, so these must match the queue's defaults —
+  // a job whose own options say otherwise (repeatable templates, jobs enqueued
+  // by an older build) is still cleaned up on completion here.
+  const opts = {
+    connection,
+    removeOnComplete: KEEP_COMPLETED,
+    removeOnFail: KEEP_FAILED,
+  };
   const workers = [
-    new Worker('match', processMatch, { connection }),
-    new Worker('offer-timeout', processOfferTimeout, { connection }),
-    new Worker('notify', processNotify, { connection }),
-    new Worker('retention', processRetention, { connection }),
-    new Worker('data-request', processDataRequest, { connection }),
+    new Worker('match', processMatch, opts),
+    new Worker('offer-timeout', processOfferTimeout, opts),
+    new Worker('notify', processNotify, opts),
+    new Worker('retention', processRetention, opts),
+    new Worker('data-request', processDataRequest, opts),
   ];
   for (const w of workers) {
     w.on('failed', (job, err) => {

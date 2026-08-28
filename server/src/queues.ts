@@ -46,10 +46,25 @@ export interface DataRequestJob {
 
 const queues = new Map<string, Queue>();
 
+/**
+ * Finished jobs must not accumulate. BullMQ keeps completed jobs forever by
+ * default, and the retention schedule alone adds 11 jobs a minute (~16k/day) —
+ * enough to fill a small Redis in weeks and then fail *every* command with
+ * "OOM command not allowed", including the pub/sub subscribe the API does at
+ * boot. Nothing reads job history, so a shallow buffer is only for eyeballing
+ * recent activity; failures are kept longer because they are worth reading.
+ * Mirrored in workers/index.ts, which applies these as the worker trims.
+ */
+export const KEEP_COMPLETED = { age: 3600, count: 100 } as const;
+export const KEEP_FAILED = { age: 24 * 3600, count: 500 } as const;
+
 function queue<T>(name: string): Queue<T> {
   let q = queues.get(name);
   if (!q) {
-    q = new Queue(name, { connection: getRedis() });
+    q = new Queue(name, {
+      connection: getRedis(),
+      defaultJobOptions: { removeOnComplete: KEEP_COMPLETED, removeOnFail: KEEP_FAILED },
+    });
     queues.set(name, q);
   }
   return q as Queue<T>;
