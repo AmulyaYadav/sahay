@@ -189,7 +189,7 @@ export async function seedDemo(): Promise<void> {
   const floodLng = 85.324;
   const flood = await makeEvent(db, {
     title: 'Nepal Flood Relief Effort',
-    type: 'public_gathering',
+    type: 'relief_operation',
     status: 'active',
     visibility: 'public',
     publicApproved: true,
