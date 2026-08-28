@@ -12,7 +12,9 @@ import { K } from './storage';
 // vague by default — the client just displays it.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    // shouldShowAlert was split into banner + notification-centre list in SDK 53.
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: false,
     shouldSetBadge: false,
   }),

@@ -1,6 +1,8 @@
 // Metro config for a standalone Expo app that consumes @sahay/shared from the
 // monorepo via a `file:` dependency (symlinked into node_modules).
-const { getDefaultConfig } = require('@expo/metro-config');
+// `expo/metro-config` is Expo's documented entry point and resolves whichever
+// copy of @expo/metro-config npm actually installed.
+const { getDefaultConfig } = require('expo/metro-config');
 const path = require('path');
 
 const projectRoot = __dirname;
