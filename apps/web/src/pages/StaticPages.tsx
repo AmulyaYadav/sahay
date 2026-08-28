@@ -1,5 +1,6 @@
-/** Static content pages: guidelines, privacy, terms, support. All content lives in the shared i18n catalog. */
+/** Static content pages: guidelines, privacy, terms, account deletion, support. All content lives in the shared i18n catalog. */
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useT } from '../i18n/LocaleContext';
 import { Banner, Button, Input, Textarea } from '../ui/components';
 
@@ -70,7 +71,51 @@ export function PrivacyPage() {
       <h2>{t('pages.privacy.rightsTitle')}</h2>
       <p>{t('pages.privacy.rights1')}</p>
       <p>{t('pages.privacy.rights2')}</p>
+      <p>
+        {t('pages.privacy.rights3')}{' '}
+        <Link to="/delete-account">{t('pages.deleteAccount.title')}</Link>
+      </p>
       <p className="text-soft">{t('pages.privacy.contact')}</p>
+    </Prose>
+  );
+}
+
+/**
+ * Account deletion, reachable without the app or an account.
+ *
+ * Google Play requires a publicly accessible URL where a user can find out how
+ * to delete their account and what happens to their data — in-app deletion
+ * alone does not satisfy it, because someone who has uninstalled the app or
+ * lost access to their email still needs a route.
+ */
+export function DeleteAccountPage() {
+  const t = useT();
+  return (
+    <Prose>
+      <h1>{t('pages.deleteAccount.title')}</h1>
+      <p className="text-soft">{t('pages.deleteAccount.intro')}</p>
+
+      <h2>{t('pages.deleteAccount.inAppTitle')}</h2>
+      <p>{t('pages.deleteAccount.inApp1')}</p>
+      <p>{t('pages.deleteAccount.inApp2')}</p>
+
+      <h2>{t('pages.deleteAccount.noAccessTitle')}</h2>
+      <p>{t('pages.deleteAccount.noAccess1')}</p>
+
+      <h2>{t('pages.deleteAccount.deletedTitle')}</h2>
+      <ul className="bullets">
+        <li>{t('pages.deleteAccount.deleted1')}</li>
+        <li>{t('pages.deleteAccount.deleted2')}</li>
+      </ul>
+
+      <h2>{t('pages.deleteAccount.keptTitle')}</h2>
+      <ul className="bullets">
+        <li>{t('pages.deleteAccount.kept1')}</li>
+        <li>{t('pages.deleteAccount.kept2')}</li>
+      </ul>
+
+      <h2>{t('pages.deleteAccount.timingTitle')}</h2>
+      <p>{t('pages.deleteAccount.timing1')}</p>
     </Prose>
   );
 }
