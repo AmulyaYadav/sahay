@@ -482,8 +482,8 @@ export const en = {
     footerBrandBody: 'A platform for communities to share what they have and get what they need.',
     // Illustrative sample content for the decorative phone graphic in the
     // hero. Never live data — it depicts the mobile app's home screen.
-    phoneMockSample: 'Jantar Mantar Student Protests',
-    phoneMockArea: 'Jantar Mantar, New Delhi',
+    phoneMockSample: 'Nepal Flood Relief Effort',
+    phoneMockArea: 'Kathmandu, Nepal',
     phoneMockSchedule: '26 Jul, 12:14 pm – 27 Jul, 12:14 am',
     phoneMockMayReceive: 'You may receive requests',
     phoneMockLocation: 'Approx. location shared (100 m)',

@@ -182,20 +182,20 @@ export async function seedDemo(): Promise<void> {
 
   /* -------------------------------------------------------------- events */
 
-  // Jantar Mantar, New Delhi — the event carrying the full demo dataset
+  // Kathmandu, Nepal — the event carrying the full demo dataset
   // (helpers, requests, matches, chat), so its helper coordinates are all
   // offsets from this centre.
-  const protestLat = 28.627;
-  const protestLng = 77.2166;
-  const protest = await makeEvent(db, {
-    title: 'Jantar Mantar Student Protests',
+  const floodLat = 27.7172;
+  const floodLng = 85.324;
+  const flood = await makeEvent(db, {
+    title: 'Nepal Flood Relief Effort',
     type: 'public_gathering',
     status: 'active',
     visibility: 'public',
     publicApproved: true,
-    areaLabel: 'Jantar Mantar, New Delhi',
-    lat: protestLat,
-    lng: protestLng,
+    areaLabel: 'Kathmandu, Nepal',
+    lat: floodLat,
+    lng: floodLng,
     radiusM: 3000,
     startsAt: new Date(Date.now() - 2 * HOUR),
     endsAt: new Date(Date.now() + 10 * HOUR),
@@ -230,32 +230,32 @@ export async function seedDemo(): Promise<void> {
     createdBy: p1.id,
   });
 
-  await join(db, admin.id, protest.id, 'event_admin');
-  await join(db, moderator.id, protest.id);
+  await join(db, admin.id, flood.id, 'event_admin');
+  await join(db, moderator.id, flood.id);
   await join(db, moderator.id, relief.id, 'event_admin');
   await join(db, p1.id, cleanup.id, 'event_admin');
-  for (const u of [vet, p1, p2, p3, p4, p5, p6, p7, p8]) await join(db, u.id, protest.id);
+  for (const u of [vet, p1, p2, p3, p4, p5, p6, p7, p8]) await join(db, u.id, flood.id);
   for (const u of [vet, p9, p10, p11]) await join(db, u.id, relief.id);
   for (const u of [p2, p3, p9]) await join(db, u.id, cleanup.id);
 
   /* ---------------------------------------------- inventory + availability */
 
   const expiry = new Date(Date.now() + 90 * DAY).toISOString().slice(0, 10);
-  const vetWater = await addItem(db, vet.id, protest.id, water.id, 24, 'bottle', { sealed: true, expiryDate: expiry, packageSize: '1 litre' });
-  await addItem(db, p1.id, protest.id, water.id, 12, 'bottle', { sealed: true, expiryDate: expiry });
-  const p2Water = await addItem(db, p2.id, protest.id, water.id, 6, 'bottle', { sealed: true });
-  await addItem(db, p3.id, protest.id, water.id, 10, 'bottle', { sealed: true, expiryDate: expiry });
-  const p4Blankets = await addItem(db, p4.id, protest.id, blanket.id, 5, 'blanket', { condition: 'good' });
-  await addItem(db, p1.id, protest.id, pads.id, 4, 'packet', { sealed: true });
-  await addItem(db, p5.id, protest.id, powerBank.id, 2, 'piece', { chargePercent: 85 });
+  const vetWater = await addItem(db, vet.id, flood.id, water.id, 24, 'bottle', { sealed: true, expiryDate: expiry, packageSize: '1 litre' });
+  await addItem(db, p1.id, flood.id, water.id, 12, 'bottle', { sealed: true, expiryDate: expiry });
+  const p2Water = await addItem(db, p2.id, flood.id, water.id, 6, 'bottle', { sealed: true });
+  await addItem(db, p3.id, flood.id, water.id, 10, 'bottle', { sealed: true, expiryDate: expiry });
+  const p4Blankets = await addItem(db, p4.id, flood.id, blanket.id, 5, 'blanket', { condition: 'good' });
+  await addItem(db, p1.id, flood.id, pads.id, 4, 'packet', { sealed: true });
+  await addItem(db, p5.id, flood.id, powerBank.id, 2, 'piece', { chargePercent: 85 });
   await addItem(db, p9.id, relief.id, bandages.id, 40, 'piece', { sealed: true, expiryDate: expiry });
   await addItem(db, p10.id, relief.id, blanket.id, 8, 'blanket', { condition: 'new' });
   await addItem(db, vet.id, relief.id, water.id, 18, 'bottle', { sealed: true });
 
-  await helpingNow(db, vet.id, protest.id, protestLat + 0.001, protestLng);
-  await helpingNow(db, p1.id, protest.id, protestLat - 0.001, protestLng + 0.001);
-  await helpingNow(db, p2.id, protest.id, protestLat + 0.002, protestLng - 0.001);
-  await helpingNow(db, p3.id, protest.id, protestLat, protestLng + 0.002);
+  await helpingNow(db, vet.id, flood.id, floodLat + 0.001, floodLng);
+  await helpingNow(db, p1.id, flood.id, floodLat - 0.001, floodLng + 0.001);
+  await helpingNow(db, p2.id, flood.id, floodLat + 0.002, floodLng - 0.001);
+  await helpingNow(db, p3.id, flood.id, floodLat, floodLng + 0.002);
   await helpingNow(db, p9.id, relief.id, reliefLat + 0.001, reliefLng + 0.001);
 
   /* ------------------------------------------------------------- requests */
@@ -280,16 +280,16 @@ export async function seedDemo(): Promise<void> {
   };
 
   // Two live searching requests (water + sanitary pads).
-  await mkRequest({ eventId: protest.id, requesterId: p6.id, categoryId: water.id, qty: 2, unit: 'bottle', status: 'searching', note: 'near the food counter, green kurta' });
-  await mkRequest({ eventId: protest.id, requesterId: p7.id, categoryId: pads.id, qty: 1, unit: 'packet', status: 'searching', urgency: 'soon' });
+  await mkRequest({ eventId: flood.id, requesterId: p6.id, categoryId: water.id, qty: 2, unit: 'bottle', status: 'searching', note: 'near the food counter, green kurta' });
+  await mkRequest({ eventId: flood.id, requesterId: p7.id, categoryId: pads.id, qty: 1, unit: 'packet', status: 'searching', urgency: 'soon' });
 
   // A second + third distinct water requester so aggregate demand clears k=3.
-  await mkRequest({ eventId: protest.id, requesterId: p8.id, categoryId: water.id, qty: 3, unit: 'bottle', status: 'searching', areaHint: 'north gate' });
-  await mkRequest({ eventId: protest.id, requesterId: p5.id, categoryId: water.id, qty: 1, unit: 'bottle', status: 'searching' });
+  await mkRequest({ eventId: flood.id, requesterId: p8.id, categoryId: water.id, qty: 3, unit: 'bottle', status: 'searching', areaHint: 'north gate' });
+  await mkRequest({ eventId: flood.id, requesterId: p5.id, categoryId: water.id, qty: 1, unit: 'bottle', status: 'searching' });
 
   // One request that found nobody.
   await mkRequest({
-    eventId: protest.id, requesterId: p8.id, categoryId: powerBank.id, qty: 1, unit: 'piece',
+    eventId: flood.id, requesterId: p8.id, categoryId: powerBank.id, qty: 1, unit: 'piece',
     status: 'no_match', expiresAt: new Date(Date.now() - HOUR), closedAt: new Date(Date.now() - HOUR),
   });
 
@@ -360,7 +360,7 @@ export async function seedDemo(): Promise<void> {
 
   // 1. Fulfilled water request with a completed match, chat, and reliability.
   const fulfilled = await mkRequest({
-    eventId: protest.id, requesterId: p7.id, categoryId: water.id, qty: 2, unit: 'bottle',
+    eventId: flood.id, requesterId: p7.id, categoryId: water.id, qty: 2, unit: 'bottle',
     status: 'fulfilled', qtyFulfilled: '2',
     createdAt: new Date(Date.now() - 90 * 60_000),
     expiresAt: new Date(Date.now() - 45 * 60_000),
@@ -396,7 +396,7 @@ export async function seedDemo(): Promise<void> {
 
   // 2. Partially fulfilled blanket request (3 wanted, 2 handed over so far).
   const partial = await mkRequest({
-    eventId: protest.id, requesterId: p6.id, categoryId: blanket.id, qty: 3, unit: 'blanket',
+    eventId: flood.id, requesterId: p6.id, categoryId: blanket.id, qty: 3, unit: 'blanket',
     status: 'partially_fulfilled', qtyFulfilled: '2',
     createdAt: new Date(Date.now() - 2 * HOUR),
     expiresAt: new Date(Date.now() - 80 * 60_000),
@@ -413,7 +413,7 @@ export async function seedDemo(): Promise<void> {
 
   // 3. A disputed match — the two reports did not agree.
   const disputedReq = await mkRequest({
-    eventId: protest.id, requesterId: p8.id, categoryId: water.id, qty: 2, unit: 'bottle',
+    eventId: flood.id, requesterId: p8.id, categoryId: water.id, qty: 2, unit: 'bottle',
     status: 'searching',
     createdAt: new Date(Date.now() - 70 * 60_000),
     expiresAt: new Date(Date.now() + 20 * 60_000),
@@ -431,7 +431,7 @@ export async function seedDemo(): Promise<void> {
   await db.insert(schema.reports).values({
     reporterId: p2.id,
     subjectUserId: p8.id,
-    subjectEventId: protest.id,
+    subjectEventId: flood.id,
     matchId: disputed.match.id,
     category: 'false_request',
     note: 'Requester confirmed zero after taking both bottles.',
@@ -443,7 +443,7 @@ export async function seedDemo(): Promise<void> {
     .values({
       reporterId: p6.id,
       subjectUserId: p5.id,
-      subjectEventId: protest.id,
+      subjectEventId: flood.id,
       category: 'no_show',
       note: 'Waited 20 minutes at the agreed spot.',
       status: 'resolved',
@@ -481,7 +481,7 @@ export async function seedDemo(): Promise<void> {
     { userId: p6.id, type: 'event_notice', titleKey: 'notifications.event_notice', bodyKey: 'moderation.noticeBody', params: { body: 'Hot meals are being served at the riverside counter until 9 pm.' } },
   ]);
   await db.insert(schema.eventNotices).values({
-    eventId: protest.id,
+    eventId: flood.id,
     body: 'Hot meals are being served at the riverside counter until 9 pm.',
     createdBy: admin.id,
   });
@@ -492,7 +492,7 @@ export async function seedDemo(): Promise<void> {
 demo seed complete — all data is fictional.
 
 events
-  ${protest.title}  (public, active)      code ${protest.code}
+  ${flood.title}  (public, active)      code ${flood.code}
   ${relief.title}  (public, active)      code ${relief.code}
   ${cleanup.title}  (public, scheduled)  code ${cleanup.code}
 
@@ -506,8 +506,8 @@ volunteer sign-in on mobile uses email OTP (console provider prints the code):
   participants (demo-user-0 … demo-user-11):
 ${participants.map((p, i) => `    demo-user-${i}@demo.sahay.local  ${p.pseudonym}`).join('\n')}
 
-the "${protest.title}" dashboard has k≥3 distinct users on water —
-GET /api/v1/events/${protest.id}/dashboard shows live numbers.
+the "${flood.title}" dashboard has k≥3 distinct users on water —
+GET /api/v1/events/${flood.id}/dashboard shows live numbers.
 `);
 }
 
