@@ -14,9 +14,14 @@ import { and, eq, gt, isNull, inArray } from 'drizzle-orm';
 import { t } from '@sahay/shared';
 import { getDb, schema } from '../db/index.js';
 import { notifyQueue } from '../queues.js';
+import { RETENTION_EVERY_MS } from './schedule.js';
 
-/** The tick window must cover the scheduler interval, or a reminder falls between ticks. */
-const TICK_MS = 60_000;
+/**
+ * The tick window must cover the scheduler interval, or a reminder falls
+ * between ticks — hence the shared constant rather than a literal. Widening it
+ * cannot cause a double send: the notify job id dedupes by (event, day).
+ */
+const TICK_MS = RETENTION_EVERY_MS;
 
 /**
  * The next daily occurrence of the event's start time at or after `from`,

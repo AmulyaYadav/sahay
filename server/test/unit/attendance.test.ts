@@ -35,15 +35,18 @@ describe('nextDailyStart', () => {
 describe('isReminderDue', () => {
   const occ = new Date('2026-08-02T09:00:00Z');
 
-  it('fires in the tick beginning exactly 24 hours before', () => {
+  it('fires anywhere in the tick beginning exactly 24 hours before', () => {
     expect(isReminderDue(occ, new Date('2026-08-01T09:00:00Z'))).toBe(true);
     expect(isReminderDue(occ, new Date('2026-08-01T09:00:30Z'))).toBe(true);
+    // Still inside the window: it spans the whole scheduler interval, so a
+    // tick landing late in it must not miss the reminder.
+    expect(isReminderDue(occ, new Date('2026-08-01T09:04:59Z'))).toBe(true);
   });
 
   it('does not fire before or after that window', () => {
     expect(isReminderDue(occ, new Date('2026-08-01T08:59:00Z'))).toBe(false);
-    // A minute later the window has passed — this is what stops it re-sending
-    // on every 60s tick for the rest of the day.
-    expect(isReminderDue(occ, new Date('2026-08-01T09:01:30Z'))).toBe(false);
+    // One interval later the window has passed — this is what stops it
+    // re-sending on every tick for the rest of the day.
+    expect(isReminderDue(occ, new Date('2026-08-01T09:05:00Z'))).toBe(false);
   });
 });

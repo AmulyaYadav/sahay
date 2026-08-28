@@ -1,7 +1,8 @@
 /**
  * Worker bootstrap: one BullMQ Worker per queue plus repeatable retention
- * schedules (every 60 s, one job per retention task). Processors live in
- * sibling files so later slices can replace them independently.
+ * schedules (one job per retention task, every RETENTION_EVERY_MS).
+ * Processors live in sibling files so later slices can replace them
+ * independently.
  */
 import { Worker } from 'bullmq';
 import { getRedis } from '../lib/redis.js';
@@ -10,6 +11,7 @@ import { processDataRequest } from './data-request.js';
 import { processMatch, processOfferTimeout } from './matching.js';
 import { processNotify } from './notify.js';
 import { processRetention } from './retention.js';
+import { RETENTION_EVERY_MS } from './schedule.js';
 
 const RETENTION_TASKS: RetentionJob['task'][] = [
   'purge_locations',
@@ -24,8 +26,6 @@ const RETENTION_TASKS: RetentionJob['task'][] = [
   'event_lifecycle',
   'attendance_reminders',
 ];
-
-const RETENTION_EVERY_MS = 60_000;
 
 export async function startWorkers(): Promise<() => Promise<void>> {
   const connection = getRedis();
