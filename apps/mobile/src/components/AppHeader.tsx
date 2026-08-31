@@ -34,7 +34,19 @@ export function AppHeader({
   const insets = useSafeAreaInsets();
   const { open } = useDrawer();
 
-  const circle = (label: string, icon: 'menu' | 'bell', onPress: () => void) => (
+  // The icon sits centered inside the larger TOUCH-sized tap target, so its
+  // visual edge lands this far inside the box's edge. The menu button needs
+  // to cancel that out so its icon lines up with the greeting text below,
+  // which has no such inset; the touch target itself stays full-size.
+  const ICON_SIZE = 22;
+  const iconInset = (TOUCH - ICON_SIZE) / 2;
+
+  const circle = (
+    label: string,
+    icon: 'menu' | 'bell',
+    onPress: () => void,
+    alignStart = false,
+  ) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -43,13 +55,14 @@ export function AppHeader({
       style={({ pressed }) => ({
         width: TOUCH,
         height: TOUCH,
+        marginLeft: alignStart ? -iconInset : 0,
         borderRadius: TOUCH / 2,
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: pressed ? th.colors.cardAlt : 'transparent',
       })}
     >
-      <Icon name={icon} size={22} color={th.colors.text} />
+      <Icon name={icon} size={ICON_SIZE} color={th.colors.text} />
     </Pressable>
   );
 
@@ -63,7 +76,7 @@ export function AppHeader({
       }}
     >
       <Row style={{ alignItems: 'center', justifyContent: 'space-between' }}>
-        {circle(t('nav.menu'), 'menu', open)}
+        {circle(t('nav.menu'), 'menu', open, true)}
 
         {showWordmark ? (
           <Row gap={spacing.xs} style={{ alignItems: 'center' }}>
