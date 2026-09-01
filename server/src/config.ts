@@ -48,6 +48,14 @@ const zConfig = z.object({
   LOCATION_TTL_MINUTES: z.coerce.number().default(15),
   /** Test-only: when set, every OTP is this code (hashed/verified normally). Refused in production. */
   TEST_FIXED_OTP: z.string().regex(/^\d{6}$/, 'must be 6 digits').optional(),
+  /**
+   * App-review bypass: a specific email address whose OTP is always REVIEWER_OTP.
+   * Intended for Google Play / App Store reviewers who cannot receive email.
+   * Safe in production because it only applies to one nominated address.
+   * Both vars must be set together, or neither is used.
+   */
+  REVIEWER_EMAIL: z.string().email().optional(),
+  REVIEWER_OTP: z.string().regex(/^\d{6}$/, 'must be 6 digits').optional(),
 });
 
 export type Config = z.infer<typeof zConfig>;

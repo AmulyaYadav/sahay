@@ -69,9 +69,11 @@ export async function startOtp(
   if (!emailOk || !ipOk) return { ok: true, retryAfterSeconds: OTP_RETRY_AFTER_SECONDS };
 
   const db = getDb();
-  // TEST_FIXED_OTP (non-production only, see config.ts) pins the code for e2e/load
-  // tests; hashing, storage, and verification are identical either way.
-  const code = loadConfig().TEST_FIXED_OTP ?? newOtpCode(LIMITS.otpLength);
+  // TEST_FIXED_OTP (non-production only) pins the code for e2e/load tests.
+  // REVIEWER_EMAIL+REVIEWER_OTP pins the code for a single nominated address (app store review).
+  const cfg = loadConfig();
+  const isReviewer = cfg.REVIEWER_EMAIL && cfg.REVIEWER_OTP && email === cfg.REVIEWER_EMAIL;
+  const code = cfg.TEST_FIXED_OTP ?? (isReviewer ? cfg.REVIEWER_OTP! : newOtpCode(LIMITS.otpLength));
   await db.transaction(async (tx) => {
     await tx
       .update(schema.otpCodes)
